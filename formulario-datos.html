@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+ 
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Formulario de datos</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #202938;
+      background: #f2f6f8;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 2rem 1rem; }
+    main {
+      width: min(100%, 760px);
+      margin: 0 auto;
+      padding: clamp(1.25rem, 4vw, 2.5rem);
+      background: #fff;
+      border: 1px solid #dce5e9;
+      border-radius: 1rem;
+      box-shadow: 0 16px 42px #20304012;
+    }
+    h1 { margin: 0 0 .5rem; font-size: clamp(1.6rem, 4vw, 2.1rem); }
+    .intro { margin: 0 0 1.5rem; color: #52616b; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .field { min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    label { display: block; margin-bottom: .35rem; font-weight: 650; }
+    input, select {
+      width: 100%;
+      min-height: 2.8rem;
+      padding: .65rem .75rem;
+      border: 1px solid #aabac2;
+      border-radius: .5rem;
+      background: #fff;
+      color: inherit;
+      font: inherit;
+    }
+    input:focus, select:focus { outline: 3px solid #b8dcf5; border-color: #1769aa; }
+    .hint { margin: .3rem 0 0; color: #52616b; font-size: .82rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }
+    button {
+      min-height: 2.8rem;
+      padding: .65rem 1rem;
+      border: 0;
+      border-radius: .5rem;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button[type="submit"] { background: #1769aa; color: #fff; }
+    button[type="reset"] { background: #e8eef1; color: #202938; }
+    #formStatus { margin: 1rem 0 0; }
+    #formStatus:empty { display: none; }
+    @media (max-width: 560px) {
+      body { padding: 1rem .65rem; }
+      .grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Formulario de datos</h1>
+    <p class="intro">Completa los campos y presiona «Enviar formulario».</p>
+
+    <form id="datosForm">
+      <div class="grid">
+        <div class="field full">
+          <label for="nombre">Nombre Completo</label>
+          <input id="nombre" name="nombre" type="text" autocomplete="name"
+            pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+" required
+            title="Escribe únicamente letras y espacios.">
+        </div>
+        <div class="field full">
+          <label for="calle">Calle</label>
+          <input id="calle" name="calle" type="text" autocomplete="address-line1"
+            pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+" required
+            title="Escribe únicamente letras y espacios.">
+        </div>
+        <div class="field">
+          <label for="numero">Número</label>
+          <input id="numero" name="numero" type="text" inputmode="numeric"
+            pattern="[0-9]+" required data-positive
+            title="Escribe un número entero mayor que 0.">
+        </div>
+        <div class="field">
+          <label for="interior">Número interior</label>
+          <input id="interior" name="interior" type="text" autocomplete="address-line2"
+            pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]+" data-positive
+            title="Usa únicamente letras o números; si escribes solo números, deben ser mayores que 0.">
+          <p class="hint">Opcional. Puedes dejarlo vacío si no aplica.</p>
+        </div>
+        <div class="field full">
+          <label for="colonia">Colonia o Fraccionamiento</label>
+          <input id="colonia" name="colonia" type="text"
+            pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+" required
+            title="Escribe únicamente letras y espacios.">
+        </div>
+        <div class="field">
+          <label for="postal">Número postal</label>
+          <input id="postal" name="postal" type="text" inputmode="numeric"
+            pattern="[0-9]{1,5}" maxlength="5" required data-positive
+            title="Escribe de 1 a 5 dígitos y un valor mayor que 0.">
+        </div>
+        <div class="field">
+          <label for="municipio">Municipio</label>
+          <select id="municipio" name="municipio" autocomplete="address-level2" required>
+            <option value="" selected disabled>Selecciona tu municipio</option>
+            <option>Aguascalientes</option>
+            <option>Asientos</option>
+            <option>Calvillo</option>
+            <option>Cosío</option>
+            <option>El Llano</option>
+            <option>Jesús María</option>
+            <option>Pabellón de Arteaga</option>
+            <option>Rincón de Romos</option>
+            <option>San Francisco de los Romo</option>
+            <option>San José de Gracia</option>
+            <option>Tepezalá</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="clave">Clave de elector</label>
+          <input id="clave" name="clave" type="text" maxlength="13"
+            pattern="[A-Za-z0-9]{1,13}" required
+            title="Usa únicamente letras y números, hasta 13 caracteres.">
+        </div>
+        <div class="field">
+          <label for="seccion">Sección</label>
+          <input id="seccion" name="seccion" type="text" inputmode="numeric"
+            pattern="[0-9]{1,4}" maxlength="4" required data-positive
+            title="Escribe de 1 a 4 dígitos y un valor mayor que 0.">
+        </div>
+        <div class="field">
+          <label for="ocr">OCR</label>
+          <input id="ocr" name="ocr" type="text" inputmode="numeric"
+            pattern="[0-9]{13}" minlength="13" maxlength="13" required data-positive
+            title="Escribe exactamente 13 dígitos y un valor mayor que 0.">
+        </div>
+        <div class="field">
+          <label for="telefono">Número de Teléfono</label>
+          <input id="telefono" name="telefono" type="tel" autocomplete="tel"
+            inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10"
+            required data-positive title="Escribe exactamente 10 dígitos y un valor mayor que 0.">
+        </div>
+        <div class="field full">
+          <label for="correo">Correo electrónico</label>
+          <input id="correo" name="correo" type="email" autocomplete="email" required
+            title="Escribe un correo válido (por ejemplo, nombre@dominio.com).">
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit">Enviar formulario</button>
+        <button type="reset">Limpiar</button>
+      </div>
+      <p id="formStatus" role="status" aria-live="polite"></p>
+    </form>
+  </main>
+  <script>
+    "use strict";
+
+    var positiveFields = document.querySelectorAll("[data-positive]");
+    var form = document.getElementById("datosForm");
+    var formStatus = document.getElementById("formStatus");
+    var URL_SCRIPT = "https://script.google.com/macros/s/AKfycbzzdUS40qnmSEITY5U1XwOLiTVzQED-2g4tphCWqZoIy5jKq6njBl7Ax5mU9csL17up/exec";
+
+
+    function validatePositiveField(field) {
+      var value = field.value;
+      field.setCustomValidity(
+        value && Number(value) <= 0 ? "El valor debe ser mayor que 0." : ""
+      );
+    }
+
+    positiveFields.forEach(function(field) {
+      field.addEventListener("input", function() {
+        validatePositiveField(field);
+      });
+    });
+
+    form.addEventListener("submit", function(event) {
+      event.preventDefault();
+      positiveFields.forEach(validatePositiveField);
+      if (!form.reportValidity()) return;
+
+      var submitButton = form.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      formStatus.textContent = "Enviando datos...";
+
+      // Apps Script no devuelve encabezados CORS legibles; con no-cors la
+      // petición llega y doPost recibe los campos en e.parameter.
+      fetch(URL_SCRIPT, {
+        method: "POST",
+        mode: "no-cors",
+        body: new URLSearchParams(new FormData(form))
+      })
+        .then(function() {
+          form.reset();
+          formStatus.textContent = "Datos enviados correctamente.";
+        })
+        .catch(function() {
+          formStatus.textContent = "No se pudieron enviar los datos. Revisa tu conexión e inténtalo de nuevo.";
+        })
+        .finally(function() {
+          submitButton.disabled = false;
+        });
+    });
+
+    form.addEventListener("reset", function() {
+      formStatus.textContent = "";
+      positiveFields.forEach(function(field) {
+        field.setCustomValidity("");
+      });
+    });
+  </script>
+</body>
+</html>
