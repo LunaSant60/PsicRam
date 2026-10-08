@@ -125,9 +125,9 @@
         </div>
         <div class="field">
           <label for="clave">Clave de elector</label>
-          <input id="clave" name="clave" type="text" maxlength="13"
-            pattern="[A-Za-z0-9]{1,13}" required
-            title="Usa únicamente letras y números, hasta 13 caracteres.">
+          <input id="clave" name="clave" type="text" minlength="18" maxlength="18"
+            pattern="[A-Za-z0-9]{18}" required
+            title="Escribe exactamente 18 caracteres, solo letras y números.">
         </div>
         <div class="field">
           <label for="seccion">Sección</label>
