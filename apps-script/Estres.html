@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Prueba de estrés</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #3a1d24;
+      background: #6d1a2c;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 2.5rem 1rem; }
+    main {
+      width: min(100%, 640px);
+      margin: 0 auto;
+      padding: clamp(1.25rem, 4vw, 2.2rem);
+      background: #fbf6ef;
+      border-radius: .9rem;
+    }
+    h1 { margin: 0 0 .4rem; font-family: Georgia, "Times New Roman", serif; }
+    p { margin: 0 0 1rem; color: #6f5a5e; }
+    button {
+      min-height: 2.8rem;
+      padding: .65rem 1.1rem;
+      border: 0;
+      border-radius: .45rem;
+      background: #6d1a2c;
+      color: #fbf6ef;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .5; cursor: default; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem; margin: 1.5rem 0 1rem; }
+    .stat { padding: .8rem; border: 1px solid #d8c6b8; border-radius: .45rem; background: #fff; }
+    .stat b { display: block; font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+    .stat span { font-size: .8rem; color: #6f5a5e; }
+    #resumen { color: #3a1d24; font-weight: 600; }
+    @media (max-width: 560px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Prueba de estrés</h1>
+    <p>Envía 200 formularios al mismo tiempo usando los enlaces de prueba
+      (PRUEBA001 a PRUEBA200). Antes ejecuta <code>crearAccesosDePrueba</code> en el editor.</p>
+    <button id="iniciar">Iniciar prueba</button>
+    <div class="stats">
+      <div class="stat"><b id="ok">0</b><span>Guardados</span></div>
+      <div class="stat"><b id="reintentos">0</b><span>Reintentos</span></div>
+      <div class="stat"><b id="fallidos">0</b><span>Fallidos</span></div>
+      <div class="stat"><b id="tiempo">0 s</b><span>Tiempo</span></div>
+    </div>
+    <p id="resumen"></p>
+  </main>
+  <script>
+    "use strict";
+
+    var TOTAL = 200;
+    var MAX_REINTENTOS = 8;
+    var cuenta = { ok: 0, reintentos: 0, fallidos: 0, terminados: 0 };
+    var errores = {};
+    var inicio = 0;
+    var reloj = null;
+
+    function pintar() {
+      document.getElementById("ok").textContent = cuenta.ok;
+      document.getElementById("reintentos").textContent = cuenta.reintentos;
+      document.getElementById("fallidos").textContent = cuenta.fallidos;
+      document.getElementById("tiempo").textContent = Math.round((Date.now() - inicio) / 1000) + " s";
+    }
+
+    function datosDePrueba(i) {
+      var n = ("00" + i).slice(-3);
+      return {
+        codigo: "PRUEBA" + n,
+        nombre: "Prueba Estres",
+        calle: "Avenida de Prueba",
+        numero: String(i),
+        interior: "",
+        colonia: "Fraccionamiento Demo",
+        postal: "20000",
+        municipio: "Aguascalientes",
+        clave: "PRBAEJ900101AGS" + n,
+        seccion: "1234",
+        ocr: "1234567890" + n,
+        telefono: "4490000" + n,
+        correo: "prueba" + n + "@ejemplo.com"
+      };
+    }
+
+    // La misma lógica de reintentos que usa el formulario real.
+    function enviar(datos, intento, listo) {
+      function reintentar(motivo) {
+        if (intento >= MAX_REINTENTOS) {
+          listo({ ok: false, error: motivo });
+          return;
+        }
+        cuenta.reintentos++;
+        pintar();
+        setTimeout(function() {
+          enviar(datos, intento + 1, listo);
+        }, Math.min(1500 * Math.pow(2, intento), 15000) + Math.random() * 2000);
+      }
+      google.script.run
+        .withSuccessHandler(function(result) {
+          result = result || {};
+          if (result.error === "ocupado") return reintentar("ocupado");
+          if (result.error === "usado" && intento > 0) result = { ok: true };
+          listo(result);
+        })
+        .withFailureHandler(function(err) {
+          reintentar(String((err && err.message) || err));
+        })
+        .enviarDatos(datos);
+    }
+
+    function terminado(result) {
+      if (result.ok) {
+        cuenta.ok++;
+      } else {
+        cuenta.fallidos++;
+        var motivo = result.message || result.error || "desconocido";
+        errores[motivo] = (errores[motivo] || 0) + 1;
+      }
+      cuenta.terminados++;
+      pintar();
+      if (cuenta.terminados === TOTAL) {
+        clearInterval(reloj);
+        var texto = "Terminó: " + cuenta.ok + " de " + TOTAL + " guardados en " +
+          Math.round((Date.now() - inicio) / 1000) + " segundos.";
+        var lista = Object.keys(errores).map(function(m) { return errores[m] + " × " + m; });
+        if (lista.length) texto += " Errores: " + lista.join("; ");
+        document.getElementById("resumen").textContent = texto;
+      }
+    }
+
+    document.getElementById("iniciar").addEventListener("click", function() {
+      this.disabled = true;
+      inicio = Date.now();
+      reloj = setInterval(pintar, 500);
+      document.getElementById("resumen").textContent = "Enviando...";
+      for (var i = 1; i <= TOTAL; i++) {
+        enviar(datosDePrueba(i), 0, terminado);
+      }
+    });
+  </script>
+</body>
+</html>

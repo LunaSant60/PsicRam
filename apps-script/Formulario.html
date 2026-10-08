@@ -261,30 +261,48 @@
       var datos = {};
       new FormData(form).forEach(function(value, key) { datos[key] = value; });
 
+      enviar(datos, 0, function(result) {
+        submitButton.disabled = false;
+        if (result.ok) {
+          form.hidden = true;
+          intro.hidden = true;
+          showAccessMessage("¡Gracias! Tus datos se enviaron correctamente.");
+        } else if (result.error === "usado" || result.error === "invalido") {
+          form.hidden = true;
+          intro.hidden = true;
+          showAccessMessage(ACCESS_ERRORS[result.error]);
+        } else {
+          formStatus.textContent = result.message ||
+            "No se pudieron enviar los datos. Revisa tu conexión e inténtalo de nuevo.";
+        }
+      });
+    });
+
+    // Si Google está saturado (muchos envíos a la vez) reintenta hasta 8 veces (poco más de 1 minuto)
+    // con esperas crecientes. Un «usado» tras un reintento significa que el
+    // intento anterior sí se guardó aunque no llegó la respuesta.
+    var MAX_REINTENTOS = 8;
+    function enviar(datos, intento, listo) {
+      function reintentar() {
+        if (intento >= MAX_REINTENTOS) {
+          listo({ ok: false });
+          return;
+        }
+        formStatus.textContent = "Hay mucha gente enviando, reintentando...";
+        setTimeout(function() {
+          enviar(datos, intento + 1, listo);
+        }, Math.min(1500 * Math.pow(2, intento), 15000) + Math.random() * 2000);
+      }
       google.script.run
         .withSuccessHandler(function(result) {
-          submitButton.disabled = false;
-          if (result && result.ok) {
-            form.hidden = true;
-            intro.hidden = true;
-            showAccessMessage("¡Gracias! Tus datos se enviaron correctamente.");
-            return;
-          }
-          if (result && (result.error === "usado" || result.error === "invalido")) {
-            form.hidden = true;
-            intro.hidden = true;
-            showAccessMessage(ACCESS_ERRORS[result.error]);
-            return;
-          }
-          formStatus.textContent = (result && result.message) ||
-            "No se pudieron enviar los datos. Inténtalo de nuevo.";
+          result = result || {};
+          if (result.error === "ocupado") return reintentar();
+          if (result.error === "usado" && intento > 0) result = { ok: true };
+          listo(result);
         })
-        .withFailureHandler(function() {
-          submitButton.disabled = false;
-          formStatus.textContent = "No se pudieron enviar los datos. Revisa tu conexión e inténtalo de nuevo.";
-        })
+        .withFailureHandler(reintentar)
         .enviarDatos(datos);
-    });
+    }
 
     function showAccessMessage(text) {
       accessStatus.textContent = text;

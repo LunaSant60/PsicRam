@@ -57,6 +57,9 @@ function generarEnlaces() {
 function doGet(e) {
   // «c» es un parámetro reservado de Apps Script: Google rechaza la URL antes
   // de llegar a doGet. Por eso el código va en «acceso».
+  if (e.parameter.modo === "estres") {
+    return HtmlService.createHtmlOutputFromFile("Estres").setTitle("Prueba de estrés");
+  }
   var codigo = String(e.parameter.acceso || "").trim();
   var acceso = buscarAcceso_(codigo);
   var plantilla = HtmlService.createTemplateFromFile("Formulario");
@@ -69,28 +72,30 @@ function doGet(e) {
 
 // El formulario la llama con google.script.run al presionar «Enviar formulario».
 function enviarDatos(datos) {
+  datos = datos || {};
+  var valores = [];
+  for (var i = 0; i < CAMPOS.length; i++) {
+    var campo = CAMPOS[i];
+    var valor = String(datos[campo.nombre] || "").trim();
+    if ((!valor && !campo.opcional) || (valor && !campo.patron.test(valor))) {
+      return { ok: false, error: "datos", message: "Revisa el campo «" + campo.titulo + "»." };
+    }
+    // El apóstrofo evita que Sheets quite ceros a la izquierda (OCR, CP, etc.).
+    valores.push("'" + valor);
+  }
+
+  // Solo la consulta y la escritura van dentro del candado, para que muchos
+  // envíos a la vez esperen su turno poco tiempo y nunca se use dos veces un enlace.
   var lock = LockService.getScriptLock();
-  lock.waitLock(10000);
+  if (!lock.tryLock(30000)) return { ok: false, error: "ocupado" };
   try {
-    datos = datos || {};
     var acceso = buscarAcceso_(datos.codigo);
     if (!acceso) return { ok: false, error: "invalido" };
     if (acceso.usado) return { ok: false, error: "usado" };
 
-    var valores = [];
-    for (var i = 0; i < CAMPOS.length; i++) {
-      var campo = CAMPOS[i];
-      var valor = String(datos[campo.nombre] || "").trim();
-      if ((!valor && !campo.opcional) || (valor && !campo.patron.test(valor))) {
-        return { ok: false, error: "datos", message: "Revisa el campo «" + campo.titulo + "»." };
-      }
-      // El apóstrofo evita que Sheets quite ceros a la izquierda (OCR, CP, etc.).
-      valores.push("'" + valor);
-    }
-
-    var respuestas = obtenerHojaRespuestas_();
-    respuestas.appendRow([new Date(), acceso.nombre].concat(valores));
+    obtenerHojaRespuestas_().appendRow([new Date(), acceso.nombre].concat(valores));
     obtenerHojaAccesos_().getRange(acceso.fila, 3).setValue(new Date());
+    SpreadsheetApp.flush();
     return { ok: true };
   } finally {
     lock.releaseLock();
@@ -130,4 +135,41 @@ function obtenerHojaRespuestas_() {
     hoja.appendRow(["Fecha", "Invitado"].concat(CAMPOS.map(function(c) { return c.titulo; })));
   }
   return hoja;
+}
+
+// ---------- Prueba de estrés ----------
+// 1. Ejecuta crearAccesosDePrueba desde el editor (crea 200 enlaces de prueba).
+// 2. Abre la URL de la implementación con «?modo=estres» y presiona «Iniciar».
+// 3. Ejecuta borrarPruebas para quitar los renglones de prueba de las dos pestañas.
+var PRUEBA_NOMBRE = "Prueba estrés";
+var PRUEBA_TOTAL = 200;
+
+function crearAccesosDePrueba() {
+  borrarPruebas();
+  var filas = [];
+  for (var i = 1; i <= PRUEBA_TOTAL; i++) {
+    var n = ("00" + i).slice(-3);
+    filas.push([PRUEBA_NOMBRE + " " + n, "PRUEBA" + n, "", ""]);
+  }
+  var hoja = obtenerHojaAccesos_();
+  hoja.getRange(hoja.getLastRow() + 1, 1, filas.length, 4).setValues(filas);
+}
+
+function borrarPruebas() {
+  [obtenerHojaAccesos_(), obtenerHojaRespuestas_()].forEach(function(hoja) {
+    var ultima = hoja.getLastRow();
+    if (ultima < 2) return;
+    var col = hoja.getName() === HOJA_ACCESOS ? 1 : 2;
+    var nombres = hoja.getRange(2, col, ultima - 1, 1).getValues();
+    // De abajo hacia arriba, borrando cada bloque seguido de renglones de prueba.
+    var fin = -1;
+    for (var i = nombres.length - 1; i >= -1; i--) {
+      var esPrueba = i >= 0 && String(nombres[i][0]).indexOf(PRUEBA_NOMBRE) === 0;
+      if (esPrueba && fin < 0) fin = i;
+      if (!esPrueba && fin >= 0) {
+        hoja.deleteRows(i + 3, fin - i);
+        fin = -1;
+      }
+    }
+  });
 }
