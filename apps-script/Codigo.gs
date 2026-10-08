@@ -1,0 +1,130 @@
+// Apps Script del formulario de datos (formulario-datos.html).
+//
+// La hoja de cálculo necesita dos pestañas:
+//   «Accesos»:    Nombre | Código | Usado | Enlace
+//   «Respuestas»: se llena sola; la fila de encabezados se crea si está vacía.
+//
+// Para invitar a alguien: escribe su nombre en la columna A de «Accesos» y usa
+// el menú Accesos › Generar enlaces. Cada enlace sirve para un solo envío.
+
+var HOJA_ACCESOS = "Accesos";
+var HOJA_RESPUESTAS = "Respuestas";
+
+// Dirección donde está publicado formulario-datos.html (sin «?c=...»).
+var FORM_URL = "PEGA_AQUI_LA_DIRECCION_DEL_FORMULARIO";
+
+var CAMPOS = [
+  { nombre: "nombre",    titulo: "Nombre completo",           patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/ },
+  { nombre: "calle",     titulo: "Calle",                     patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/ },
+  { nombre: "numero",    titulo: "Número",                    patron: /^[0-9]+$/ },
+  { nombre: "interior",  titulo: "Número interior",           patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]*$/, opcional: true },
+  { nombre: "colonia",   titulo: "Colonia o Fraccionamiento", patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,#\-]+$/ },
+  { nombre: "postal",    titulo: "Código postal",             patron: /^[0-9]{1,5}$/ },
+  { nombre: "municipio", titulo: "Municipio",                 patron: /^.{1,40}$/ },
+  { nombre: "clave",     titulo: "Clave de elector",          patron: /^[A-Za-z0-9]{18}$/ },
+  { nombre: "seccion",   titulo: "Sección",                   patron: /^[0-9]{1,4}$/ },
+  { nombre: "ocr",       titulo: "OCR",                       patron: /^[0-9]{13}$/ },
+  { nombre: "telefono",  titulo: "Teléfono",                  patron: /^[0-9]{10}$/ },
+  { nombre: "correo",    titulo: "Correo electrónico",        patron: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ }
+];
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu("Accesos")
+    .addItem("Generar enlaces", "generarEnlaces")
+    .addToUi();
+}
+
+// Llena Código y Enlace en cada fila de «Accesos» que tenga nombre y no tenga código.
+function generarEnlaces() {
+  var hoja = obtenerHojaAccesos_();
+  var ultima = hoja.getLastRow();
+  if (ultima < 2) return;
+  var filas = hoja.getRange(2, 1, ultima - 1, 4).getValues();
+  filas.forEach(function(fila) {
+    if (fila[0] && !fila[1]) {
+      fila[1] = Utilities.getUuid().replace(/-/g, "");
+    }
+    if (fila[1]) {
+      fila[3] = FORM_URL + "?c=" + fila[1];
+    }
+  });
+  hoja.getRange(2, 1, filas.length, 4).setValues(filas);
+}
+
+// El formulario pregunta aquí si su código es válido antes de mostrarse.
+function doGet(e) {
+  var acceso = buscarAcceso_(e.parameter.c);
+  if (!acceso) return json_({ ok: false, error: "invalido" });
+  if (acceso.usado) return json_({ ok: false, error: "usado" });
+  return json_({ ok: true });
+}
+
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var p = e.parameter;
+    var acceso = buscarAcceso_(p.codigo);
+    if (!acceso) return json_({ ok: false, error: "invalido" });
+    if (acceso.usado) return json_({ ok: false, error: "usado" });
+
+    var valores = [];
+    for (var i = 0; i < CAMPOS.length; i++) {
+      var campo = CAMPOS[i];
+      var valor = String(p[campo.nombre] || "").trim();
+      if ((!valor && !campo.opcional) || (valor && !campo.patron.test(valor))) {
+        return json_({ ok: false, error: "datos", message: "Revisa el campo «" + campo.titulo + "»." });
+      }
+      // El apóstrofo evita que Sheets quite ceros a la izquierda (OCR, CP, etc.).
+      valores.push("'" + valor);
+    }
+
+    var respuestas = obtenerHojaRespuestas_();
+    respuestas.appendRow([new Date(), acceso.nombre].concat(valores));
+    obtenerHojaAccesos_().getRange(acceso.fila, 3).setValue(new Date());
+    return json_({ ok: true });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function buscarAcceso_(codigo) {
+  codigo = String(codigo || "").trim();
+  if (!codigo) return null;
+  var hoja = obtenerHojaAccesos_();
+  var ultima = hoja.getLastRow();
+  if (ultima < 2) return null;
+  var filas = hoja.getRange(2, 1, ultima - 1, 3).getValues();
+  for (var i = 0; i < filas.length; i++) {
+    if (String(filas[i][1]) === codigo) {
+      return { fila: i + 2, nombre: filas[i][0], usado: !!filas[i][2] };
+    }
+  }
+  return null;
+}
+
+function obtenerHojaAccesos_() {
+  var libro = SpreadsheetApp.getActiveSpreadsheet();
+  var hoja = libro.getSheetByName(HOJA_ACCESOS);
+  if (!hoja) {
+    hoja = libro.insertSheet(HOJA_ACCESOS);
+    hoja.appendRow(["Nombre", "Código", "Usado", "Enlace"]);
+  }
+  return hoja;
+}
+
+function obtenerHojaRespuestas_() {
+  var libro = SpreadsheetApp.getActiveSpreadsheet();
+  var hoja = libro.getSheetByName(HOJA_RESPUESTAS);
+  if (!hoja) hoja = libro.insertSheet(HOJA_RESPUESTAS);
+  if (hoja.getLastRow() === 0) {
+    hoja.appendRow(["Fecha", "Invitado"].concat(CAMPOS.map(function(c) { return c.titulo; })));
+  }
+  return hoja;
+}
+
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}

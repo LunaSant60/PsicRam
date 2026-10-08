@@ -55,6 +55,13 @@
     button[type="reset"] { background: #e8eef1; color: #202938; }
     #formStatus { margin: 1rem 0 0; }
     #formStatus:empty { display: none; }
+    .notice {
+      margin: 0;
+      padding: 1rem;
+      border-radius: .5rem;
+      background: #e8eef1;
+      color: #202938;
+    }
     @media (max-width: 560px) {
       body { padding: 1rem .65rem; }
       .grid { grid-template-columns: 1fr; }
@@ -65,9 +72,11 @@
 <body>
   <main>
     <h1>Formulario de datos</h1>
-    <p class="intro">Completa los campos y presiona «Enviar formulario».</p>
+    <p class="intro" id="intro" hidden>Completa los campos y presiona «Enviar formulario».</p>
+    <p class="notice" id="accessStatus" role="status" aria-live="polite">Verificando tu enlace...</p>
 
-    <form id="datosForm">
+    <form id="datosForm" hidden>
+      <input type="hidden" name="codigo" id="codigo">
       <div class="grid">
         <div class="field full">
           <label for="nombre">Nombre Completo</label>
@@ -166,6 +175,14 @@
     var positiveFields = document.querySelectorAll("[data-positive]");
     var form = document.getElementById("datosForm");
     var formStatus = document.getElementById("formStatus");
+    var intro = document.getElementById("intro");
+    var accessStatus = document.getElementById("accessStatus");
+    var accessCode = new URLSearchParams(location.search).get("c") || "";
+    var ACCESS_ERRORS = {
+      falta: "Este formulario es privado. Ábrelo con el enlace personal que te enviaron.",
+      invalido: "Este enlace no es válido. Pide un enlace nuevo a quien te envió el formulario.",
+      usado: "Este enlace ya se utilizó para enviar datos. Si necesitas corregir algo, pide un enlace nuevo."
+    };
     var URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwpKJMtDnSmkPhK3AKpMdYpiuKEI1LULWm52NH1RErWZTPoAR6KGZfix16CkP_-Iy1RzQ/exec";
 
 
@@ -191,16 +208,26 @@
       submitButton.disabled = true;
       formStatus.textContent = "Enviando datos...";
 
-      // Apps Script no devuelve encabezados CORS legibles; con no-cors la
-      // petición llega y doPost recibe los campos en e.parameter.
       fetch(URL_SCRIPT, {
         method: "POST",
-        mode: "no-cors",
         body: new URLSearchParams(new FormData(form))
       })
-        .then(function() {
-          form.reset();
-          formStatus.textContent = "Datos enviados correctamente.";
+        .then(function(response) { return response.json(); })
+        .then(function(result) {
+          if (result && result.ok) {
+            form.hidden = true;
+            intro.hidden = true;
+            showAccessMessage("¡Gracias! Tus datos se enviaron correctamente.");
+            return;
+          }
+          if (result && (result.error === "usado" || result.error === "invalido")) {
+            form.hidden = true;
+            intro.hidden = true;
+            showAccessMessage(ACCESS_ERRORS[result.error]);
+            return;
+          }
+          formStatus.textContent = (result && result.message) ||
+            "No se pudieron enviar los datos. Inténtalo de nuevo.";
         })
         .catch(function() {
           formStatus.textContent = "No se pudieron enviar los datos. Revisa tu conexión e inténtalo de nuevo.";
@@ -210,12 +237,43 @@
         });
     });
 
+    function showAccessMessage(text) {
+      accessStatus.textContent = text;
+      accessStatus.hidden = false;
+    }
+
+    // Solo se muestra el formulario si el código del enlace existe en la hoja
+    // «Accesos» y todavía no se ha usado; Apps Script vuelve a revisarlo al enviar.
+    function verifyAccess() {
+      if (!accessCode) {
+        showAccessMessage(ACCESS_ERRORS.falta);
+        return;
+      }
+      fetch(URL_SCRIPT + "?c=" + encodeURIComponent(accessCode))
+        .then(function(response) { return response.json(); })
+        .then(function(result) {
+          if (result && result.ok) {
+            document.getElementById("codigo").value = accessCode;
+            accessStatus.hidden = true;
+            intro.hidden = false;
+            form.hidden = false;
+          } else {
+            showAccessMessage(ACCESS_ERRORS[result && result.error] || ACCESS_ERRORS.invalido);
+          }
+        })
+        .catch(function() {
+          showAccessMessage("No se pudo verificar tu enlace. Revisa tu conexión y recarga la página.");
+        });
+    }
+
     form.addEventListener("reset", function() {
       formStatus.textContent = "";
       positiveFields.forEach(function(field) {
         field.setCustomValidity("");
       });
     });
+
+    verifyAccess();
   </script>
 </body>
 </html>
