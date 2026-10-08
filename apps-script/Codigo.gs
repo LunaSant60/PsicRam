@@ -1,6 +1,7 @@
-// Apps Script del formulario de datos (formulario-datos.html).
+// Apps Script del formulario de datos. El mismo script muestra el formulario
+// (archivo «Formulario» del proyecto) y guarda las respuestas.
 //
-// La hoja de cálculo necesita dos pestañas:
+// La hoja de cálculo usa dos pestañas, que se crean solas si no existen:
 //   «Accesos»:    Nombre | Código | Usado | Enlace
 //   «Respuestas»: se llena sola; la fila de encabezados se crea si está vacía.
 //
@@ -10,8 +11,8 @@
 var HOJA_ACCESOS = "Accesos";
 var HOJA_RESPUESTAS = "Respuestas";
 
-// Dirección donde está publicado formulario-datos.html (sin «?c=...»).
-var FORM_URL = "PEGA_AQUI_LA_DIRECCION_DEL_FORMULARIO";
+// URL de la implementación (Implementar › Administrar implementaciones).
+var FORM_URL = "https://script.google.com/macros/s/AKfycbwpKJMtDnSmkPhK3AKpMdYpiuKEI1LULWm52NH1RErWZTPoAR6KGZfix16CkP_-Iy1RzQ/exec";
 
 var CAMPOS = [
   { nombre: "nombre",    titulo: "Nombre completo",           patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/ },
@@ -52,29 +53,34 @@ function generarEnlaces() {
   hoja.getRange(2, 1, filas.length, 4).setValues(filas);
 }
 
-// El formulario pregunta aquí si su código es válido antes de mostrarse.
+// Muestra el formulario solo si el enlace trae un código válido y sin usar.
 function doGet(e) {
-  var acceso = buscarAcceso_(e.parameter.c);
-  if (!acceso) return json_({ ok: false, error: "invalido" });
-  if (acceso.usado) return json_({ ok: false, error: "usado" });
-  return json_({ ok: true });
+  var codigo = String(e.parameter.c || "").trim();
+  var acceso = buscarAcceso_(codigo);
+  var plantilla = HtmlService.createTemplateFromFile("Formulario");
+  plantilla.estado = !codigo ? "falta" : !acceso ? "invalido" : acceso.usado ? "usado" : "ok";
+  plantilla.codigo = plantilla.estado === "ok" ? codigo : "";
+  return plantilla.evaluate()
+    .setTitle("Formulario de datos")
+    .addMetaTag("viewport", "width=device-width, initial-scale=1");
 }
 
-function doPost(e) {
+// El formulario la llama con google.script.run al presionar «Enviar formulario».
+function enviarDatos(datos) {
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
-    var p = e.parameter;
-    var acceso = buscarAcceso_(p.codigo);
-    if (!acceso) return json_({ ok: false, error: "invalido" });
-    if (acceso.usado) return json_({ ok: false, error: "usado" });
+    datos = datos || {};
+    var acceso = buscarAcceso_(datos.codigo);
+    if (!acceso) return { ok: false, error: "invalido" };
+    if (acceso.usado) return { ok: false, error: "usado" };
 
     var valores = [];
     for (var i = 0; i < CAMPOS.length; i++) {
       var campo = CAMPOS[i];
-      var valor = String(p[campo.nombre] || "").trim();
+      var valor = String(datos[campo.nombre] || "").trim();
       if ((!valor && !campo.opcional) || (valor && !campo.patron.test(valor))) {
-        return json_({ ok: false, error: "datos", message: "Revisa el campo «" + campo.titulo + "»." });
+        return { ok: false, error: "datos", message: "Revisa el campo «" + campo.titulo + "»." };
       }
       // El apóstrofo evita que Sheets quite ceros a la izquierda (OCR, CP, etc.).
       valores.push("'" + valor);
@@ -83,7 +89,7 @@ function doPost(e) {
     var respuestas = obtenerHojaRespuestas_();
     respuestas.appendRow([new Date(), acceso.nombre].concat(valores));
     obtenerHojaAccesos_().getRange(acceso.fila, 3).setValue(new Date());
-    return json_({ ok: true });
+    return { ok: true };
   } finally {
     lock.releaseLock();
   }
@@ -122,9 +128,4 @@ function obtenerHojaRespuestas_() {
     hoja.appendRow(["Fecha", "Invitado"].concat(CAMPOS.map(function(c) { return c.titulo; })));
   }
   return hoja;
-}
-
-function json_(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
 }
