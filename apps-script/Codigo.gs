@@ -15,7 +15,10 @@ var HOJA_RESPUESTAS = "Respuestas";
 var FORM_URL = "https://script.google.com/macros/s/AKfycbzyTBjmP5KxniCPpAdkrliDGbgBQDIt23h0k6O07PBaGzCEuSMW1phjN1Arc1nyw8bOMw/exec";
 
 var CAMPOS = [
-  { nombre: "nombre",    titulo: "Nombre completo",           patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/ },
+  { nombre: "nombres",   titulo: "Nombre(s)",                 patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/ },
+  // Opcional para quien solo tiene apellido materno.
+  { nombre: "paterno",   titulo: "Apellido paterno",          patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]*$/, opcional: true },
+  { nombre: "materno",   titulo: "Apellido materno",          patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/ },
   { nombre: "calle",     titulo: "Calle",                     patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/ },
   { nombre: "numero",    titulo: "Número",                    patron: /^[0-9]+$/ },
   { nombre: "interior",  titulo: "Número interior",           patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]*$/, opcional: true },
@@ -81,7 +84,7 @@ function enviarDatos(datos) {
       return { ok: false, error: "datos", message: "Revisa el campo «" + campo.titulo + "»." };
     }
     // El apóstrofo evita que Sheets quite ceros a la izquierda (OCR, CP, etc.).
-    valores.push("'" + valor);
+    valores.push(valor ? "'" + valor : "");
   }
 
   // Solo la consulta y la escritura van dentro del candado, para que muchos
@@ -133,6 +136,9 @@ function obtenerHojaRespuestas_() {
   if (!hoja) hoja = libro.insertSheet(HOJA_RESPUESTAS);
   if (hoja.getLastRow() === 0) {
     hoja.appendRow(["Fecha", "Invitado"].concat(CAMPOS.map(function(c) { return c.titulo; })));
+    // Ancho y formato fijos para que la fecha no salga como ##### al bajar a Excel.
+    hoja.setColumnWidth(1, 170);
+    hoja.getRange("A:A").setNumberFormat("dd/mm/yyyy hh:mm");
   }
   return hoja;
 }

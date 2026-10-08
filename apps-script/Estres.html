@@ -76,7 +76,9 @@
       var n = ("00" + i).slice(-3);
       return {
         codigo: "PRUEBA" + n,
-        nombre: "Prueba Estres",
+        nombres: "Prueba",
+        paterno: i % 2 ? "Estres" : "",
+        materno: "Ejemplo",
         calle: "Avenida de Prueba",
         numero: String(i),
         interior: "",
