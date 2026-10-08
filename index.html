@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+ 
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Formulario de datos</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #202938;
+      background: #f2f6f8;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 2rem 1rem; }
+    main {
+      width: min(100%, 760px);
+      margin: 0 auto;
+      padding: clamp(1.25rem, 4vw, 2.5rem);
+      background: #fff;
+      border: 1px solid #dce5e9;
+      border-radius: 1rem;
+      box-shadow: 0 16px 42px #20304012;
+    }
+    h1 { margin: 0 0 .5rem; font-size: clamp(1.6rem, 4vw, 2.1rem); }
+    .intro { margin: 0 0 1.5rem; color: #52616b; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .field { min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    label { display: block; margin-bottom: .35rem; font-weight: 650; }
+    input, select {
+      width: 100%;
+      min-height: 2.8rem;
+      padding: .65rem .75rem;
+      border: 1px solid #aabac2;
+      border-radius: .5rem;
+      background: #fff;
+      color: inherit;
+      font: inherit;
+    }
+    input:focus, select:focus { outline: 3px solid #b8dcf5; border-color: #1769aa; }
+    .hint { margin: .3rem 0 0; color: #52616b; font-size: .82rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }
+    button {
+      min-height: 2.8rem;
+      padding: .65rem 1rem;
+      border: 0;
+      border-radius: .5rem;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button[type="submit"] { background: #1769aa; color: #fff; }
+    button[type="reset"] { background: #e8eef1; color: #202938; }
+    .consent { display: flex; gap: .6rem; align-items: flex-start; font-weight: 400; margin: 0; }
+    .consent input { width: 1.2rem; min-height: 0; height: 1.2rem; margin: .15rem 0 0; flex: none; }
+    .consent a { color: #1769aa; }
+    button:disabled { opacity: .65; cursor: wait; }
+    #formStatus { margin: 1rem 0 0; padding: .75rem 1rem; border-radius: .5rem; }
+    #formStatus.ok { background: #e7f5ec; color: #1d6b3a; }
+    #formStatus.error { background: #fdecec; color: #a12828; }
+    #formStatus:empty { display: none; }
+    @media (max-width: 560px) {
+      body { padding: 1rem .65rem; }
+      .grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Formulario de datos</h1>
+    <p class="intro">Completa todos los campos obligatorios y envía el formulario.</p>
+
+    <form id="datosForm" novalidate>
+      <div class="grid">
+        <div class="field full">
+          <label for="nombre">Nombre Completo</label>
+          <input id="nombre" name="nombre" type="text" autocomplete="name"
+            pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+" required
+            title="Escribe únicamente letras y espacios.">
+        </div>
+        <div class="field full">
+          <label for="calle">Calle</label>
+          <input id="calle" name="calle" type="text" autocomplete="address-line1"
+            pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9. ]+" required
+            title="Usa únicamente letras, números, espacios y puntos.">
+        </div>
+        <div class="field">
+          <label for="numero">Número</label>
+          <input id="numero" name="numero" type="text" inputmode="numeric"
+            pattern="[0-9]+" required data-positive
+            title="Escribe un número entero mayor que 0.">
+        </div>
+        <div class="field">
+          <label for="interior">Número interior</label>
+          <input id="interior" name="interior" type="text" autocomplete="address-line2"
+            pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]+"
+            title="Usa únicamente letras o números.">
+          <p class="hint">Opcional. Puedes dejarlo vacío si no aplica.</p>
+        </div>
+        <div class="field full">
+          <label for="colonia">Colonia o Fraccionamiento</label>
+          <input id="colonia" name="colonia" type="text"
+            pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9. ]+" required
+            title="Usa únicamente letras, números, espacios y puntos.">
+        </div>
+        <div class="field">
+          <label for="postal">Código postal</label>
+          <input id="postal" name="postal" type="text" inputmode="numeric" autocomplete="postal-code"
+            pattern="[0-9]{5}" minlength="5" maxlength="5" required
+            title="Escribe exactamente 5 dígitos.">
+        </div>
+        <div class="field">
+          <label for="municipio">Municipio</label>
+          <select id="municipio" name="municipio" autocomplete="address-level2" required>
+            <option value="" selected disabled>Selecciona tu municipio</option>
+            <option>Aguascalientes</option>
+            <option>Asientos</option>
+            <option>Calvillo</option>
+            <option>Cosío</option>
+            <option>El Llano</option>
+            <option>Jesús María</option>
+            <option>Pabellón de Arteaga</option>
+            <option>Rincón de Romos</option>
+            <option>San Francisco de los Romo</option>
+            <option>San José de Gracia</option>
+            <option>Tepezalá</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="clave">Clave de elector</label>
+          <input id="clave" name="clave" type="text" autocapitalize="characters"
+            pattern="[A-Z0-9]{18}" minlength="18" maxlength="18" required
+            title="Escribe exactamente 18 letras o números.">
+        </div>
+        <div class="field">
+          <label for="seccion">Sección</label>
+          <input id="seccion" name="seccion" type="text" inputmode="numeric"
+            pattern="[0-9]{1,4}" maxlength="4" required data-positive
+            title="Escribe de 1 a 4 dígitos y un valor mayor que 0.">
+        </div>
+        <div class="field">
+          <label for="ocr">OCR</label>
+          <input id="ocr" name="ocr" type="text" inputmode="numeric"
+            pattern="[0-9]{13}" minlength="13" maxlength="13" required
+            title="Escribe exactamente 13 dígitos.">
+        </div>
+        <div class="field">
+          <label for="telefono">Número de Teléfono</label>
+          <input id="telefono" name="telefono" type="tel" autocomplete="tel"
+            inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10"
+            required title="Escribe exactamente 10 dígitos.">
+        </div>
+        <div class="field full">
+          <label for="correo">Correo electrónico</label>
+          <input id="correo" name="correo" type="email" autocomplete="email" required
+            title="Escribe un correo válido (por ejemplo, nombre@dominio.com).">
+        </div>
+        <div class="field full">
+          <label class="consent" for="consentimiento">
+            <input id="consentimiento" name="consentimiento" type="checkbox" value="Sí" required>
+            <!-- PENDIENTE: reemplazar href="#" por el enlace real del aviso de privacidad -->
+            <span>He leído y acepto el <a href="#" target="_blank" rel="noopener">aviso de privacidad</a>.</span>
+          </label>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit" id="btnEnviar">Enviar</button>
+        <button type="reset">Limpiar</button>
+      </div>
+      <p id="formStatus" role="status" aria-live="polite"></p>
+    </form>
+  </main>
+  <script>
+    "use strict";
+
+    var positiveFields = document.querySelectorAll("[data-positive]");
+    var form = document.getElementById("datosForm");
+    var formStatus = document.getElementById("formStatus");
+    var btnEnviar = document.getElementById("btnEnviar");
+    var clave = document.getElementById("clave");
+    var URL_SCRIPT = "https://script.google.com/macros/s/AKfycbzzdUS40qnmSEITY5U1XwOLiTVzQED-2g4tphCWqZoIy5jKq6njBl7Ax5mU9csL17up/exec";
+
+
+    function validatePositiveField(field) {
+      var value = field.value;
+      field.setCustomValidity(
+        value && Number(value) <= 0 ? "El valor debe ser mayor que 0." : ""
+      );
+    }
+
+    positiveFields.forEach(function(field) {
+      field.addEventListener("input", function() {
+        validatePositiveField(field);
+      });
+    });
+
+    function showStatus(text, type) {
+      formStatus.textContent = text;
+      formStatus.className = type || "";
+    }
+
+    clave.addEventListener("input", function() {
+      var start = clave.selectionStart;
+      var end = clave.selectionEnd;
+      clave.value = clave.value.toUpperCase();
+      clave.setSelectionRange(start, end);
+    });
+
+    form.addEventListener("submit", function(event) {
+      event.preventDefault();
+      positiveFields.forEach(validatePositiveField);
+      if (!form.reportValidity()) return;
+
+      btnEnviar.disabled = true;
+      btnEnviar.textContent = "Enviando…";
+      showStatus("");
+
+      // no-cors: la respuesta es opaca, así que no se puede saber si Google aceptó el envío.
+      fetch(URL_SCRIPT, {
+        method: "POST",
+        mode: "no-cors",
+        body: new URLSearchParams(new FormData(form))
+      })
+        .then(function() {
+          form.reset();
+          showStatus("Datos enviados. Gracias por registrarte.", "ok");
+        })
+        .catch(function() {
+          showStatus("No se pudieron enviar los datos. Revisa tu conexión e inténtalo de nuevo.", "error");
+        })
+        .finally(function() {
+          btnEnviar.disabled = false;
+          btnEnviar.textContent = "Enviar";
+        });
+    });
+
+    form.addEventListener("reset", function() {
+      showStatus("");
+      positiveFields.forEach(function(field) {
+        field.setCustomValidity("");
+      });
+    });
+  </script>
+</body>
+</html>
