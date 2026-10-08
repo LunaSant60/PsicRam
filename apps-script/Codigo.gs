@@ -47,7 +47,7 @@ function generarEnlaces() {
       fila[1] = Utilities.getUuid().replace(/-/g, "");
     }
     if (fila[1]) {
-      fila[3] = FORM_URL + "?c=" + fila[1];
+      fila[3] = FORM_URL + "?acceso=" + fila[1];
     }
   });
   hoja.getRange(2, 1, filas.length, 4).setValues(filas);
@@ -55,7 +55,9 @@ function generarEnlaces() {
 
 // Muestra el formulario solo si el enlace trae un código válido y sin usar.
 function doGet(e) {
-  var codigo = String(e.parameter.c || "").trim();
+  // «c» es un parámetro reservado de Apps Script: Google rechaza la URL antes
+  // de llegar a doGet. Por eso el código va en «acceso».
+  var codigo = String(e.parameter.acceso || "").trim();
   var acceso = buscarAcceso_(codigo);
   var plantilla = HtmlService.createTemplateFromFile("Formulario");
   plantilla.estado = !codigo ? "falta" : !acceso ? "invalido" : acceso.usado ? "usado" : "ok";
