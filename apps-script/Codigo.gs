@@ -12,7 +12,7 @@ var HOJA_ACCESOS = "Accesos";
 var HOJA_RESPUESTAS = "Respuestas";
 
 // URL de la implementación (Implementar › Administrar implementaciones).
-var FORM_URL = "https://script.google.com/macros/s/AKfycbwpKJMtDnSmkPhK3AKpMdYpiuKEI1LULWm52NH1RErWZTPoAR6KGZfix16CkP_-Iy1RzQ/exec";
+var FORM_URL = "https://script.google.com/macros/s/AKfycbzyTBjmP5KxniCPpAdkrliDGbgBQDIt23h0k6O07PBaGzCEuSMW1phjN1Arc1nyw8bOMw/exec";
 
 var CAMPOS = [
   { nombre: "nombre",    titulo: "Nombre completo",           patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/ },
