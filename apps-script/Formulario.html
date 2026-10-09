@@ -72,6 +72,18 @@
     }
     input:focus, select:focus { outline: 3px solid #ecc9d0; border-color: var(--guinda); }
     .hint { margin: .3rem 0 0; color: var(--tinta-suave); font-size: .82rem; }
+    input[type="file"] { padding: .5rem; background: #fff; }
+    .preview {
+      display: block;
+      width: 100%;
+      max-height: 180px;
+      margin-top: .5rem;
+      object-fit: contain;
+      border: 1px solid var(--borde);
+      border-radius: .45rem;
+      background: #fff;
+    }
+    .preview[hidden] { display: none; }
     .actions {
       display: flex;
       flex-wrap: wrap;
@@ -227,6 +239,18 @@
           <input id="correo" name="correo" type="email" autocomplete="email" required
             title="Escribe un correo válido (por ejemplo, nombre@dominio.com).">
         </div>
+        <h2 class="section-title">Fotos</h2>
+        <div class="field">
+          <label for="foto1">Foto 1</label>
+          <input id="foto1" name="foto1" type="file" accept="image/*" required data-photo>
+          <img class="preview" id="foto1Preview" alt="Vista previa de la foto 1" hidden>
+        </div>
+        <div class="field">
+          <label for="foto2">Foto 2</label>
+          <input id="foto2" name="foto2" type="file" accept="image/*" required data-photo>
+          <img class="preview" id="foto2Preview" alt="Vista previa de la foto 2" hidden>
+        </div>
+        <p class="hint field full">Puedes tomar la foto con la cámara o elegirla de tu galería.</p>
       </div>
       <div class="actions">
         <button type="submit">Enviar formulario</button>
@@ -278,8 +302,24 @@
       formStatus.textContent = "Enviando datos...";
 
       var datos = {};
-      new FormData(form).forEach(function(value, key) { datos[key] = value; });
+      new FormData(form).forEach(function(value, key) {
+        if (typeof value === "string") datos[key] = value;
+      });
 
+      formStatus.textContent = "Preparando fotos...";
+      Promise.all(photoInputs.map(function(input) { return reducirFoto(input.files[0]); }))
+        .then(function(fotos) {
+          photoInputs.forEach(function(input, i) { datos[input.name] = fotos[i]; });
+          formStatus.textContent = "Enviando datos...";
+          enviarFormulario(datos, submitButton);
+        })
+        .catch(function() {
+          submitButton.disabled = false;
+          formStatus.textContent = "No se pudo leer una de las fotos. Intenta con otra imagen.";
+        });
+    });
+
+    function enviarFormulario(datos, submitButton) {
       enviar(datos, 0, function(result) {
         submitButton.disabled = false;
         if (result.ok) {
@@ -295,6 +335,41 @@
           formStatus.textContent = result.message ||
             "No se pudieron enviar los datos. Revisa tu conexión e inténtalo de nuevo.";
         }
+      });
+    }
+
+    // Las fotos se reducen en el navegador (lado mayor de 1600 px, JPEG al 80 %)
+    // para que pesen unos cientos de KB y el envío sea rápido aun con mala señal.
+    var photoInputs = Array.prototype.slice.call(document.querySelectorAll("[data-photo]"));
+    var MAX_LADO = 1600;
+    function reducirFoto(file) {
+      return new Promise(function(resolve, reject) {
+        if (!file) return reject(new Error("sin foto"));
+        var url = URL.createObjectURL(file);
+        var img = new Image();
+        img.onload = function() {
+          var escala = Math.min(1, MAX_LADO / Math.max(img.naturalWidth, img.naturalHeight));
+          var canvas = document.createElement("canvas");
+          canvas.width = Math.round(img.naturalWidth * escala);
+          canvas.height = Math.round(img.naturalHeight * escala);
+          canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+          resolve(canvas.toDataURL("image/jpeg", 0.8).split(",")[1]);
+        };
+        img.onerror = function() {
+          URL.revokeObjectURL(url);
+          reject(new Error("foto ilegible"));
+        };
+        img.src = url;
+      });
+    }
+
+    photoInputs.forEach(function(input) {
+      var preview = document.getElementById(input.id + "Preview");
+      input.addEventListener("change", function() {
+        if (preview.src) URL.revokeObjectURL(preview.src);
+        preview.hidden = !input.files[0];
+        if (input.files[0]) preview.src = URL.createObjectURL(input.files[0]);
       });
     });
 
@@ -353,6 +428,9 @@
 
     form.addEventListener("reset", function() {
       formStatus.textContent = "";
+      photoInputs.forEach(function(input) {
+        document.getElementById(input.id + "Preview").hidden = true;
+      });
       positiveFields.forEach(function(field) {
         field.setCustomValidity("");
       });
