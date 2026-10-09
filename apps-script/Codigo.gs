@@ -18,9 +18,9 @@ var FORM_URL = "https://script.google.com/macros/s/AKfycbzyTBjmP5KxniCPpAdkrliDG
 
 var CAMPOS = [
   { nombre: "nombres",   titulo: "Nombre(s)",                 patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/ },
-  // Opcional para quien solo tiene apellido materno.
+  // Los dos apellidos son opcionales (hay quien solo tiene uno).
   { nombre: "paterno",   titulo: "Apellido paterno",          patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]*$/, opcional: true },
-  { nombre: "materno",   titulo: "Apellido materno",          patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/ },
+  { nombre: "materno",   titulo: "Apellido materno",          patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]*$/, opcional: true },
   { nombre: "calle",     titulo: "Calle",                     patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/ },
   { nombre: "numero",    titulo: "Número",                    patron: /^[0-9]+$/ },
   { nombre: "interior",  titulo: "Número interior",           patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]*$/, opcional: true },
@@ -38,6 +38,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("Accesos")
     .addItem("Generar enlaces", "generarEnlaces")
+    .addItem("Acomodar columnas de Respuestas", "acomodarRespuestas")
     .addToUi();
 }
 
@@ -134,17 +135,77 @@ function obtenerHojaAccesos_() {
   return hoja;
 }
 
+function encabezadosRespuestas_() {
+  return ["Fecha", "Invitado"].concat(CAMPOS.map(function(c) { return c.titulo; }));
+}
+
 function obtenerHojaRespuestas_() {
   var libro = SpreadsheetApp.getActiveSpreadsheet();
   var hoja = libro.getSheetByName(HOJA_RESPUESTAS);
   if (!hoja) hoja = libro.insertSheet(HOJA_RESPUESTAS);
+  var encabezados = encabezadosRespuestas_();
   if (hoja.getLastRow() === 0) {
-    hoja.appendRow(["Fecha", "Invitado"].concat(CAMPOS.map(function(c) { return c.titulo; })));
-    // Ancho y formato fijos para que la fecha no salga como ##### al bajar a Excel.
-    hoja.setColumnWidth(1, 170);
-    hoja.getRange("A:A").setNumberFormat("dd/mm/yyyy hh:mm");
+    hoja.appendRow(encabezados);
+    darFormatoRespuestas_(hoja);
+  } else {
+    // Si cambiaron los campos del formulario, reacomoda antes de escribir para
+    // que ninguna respuesta quede en la columna equivocada.
+    var actuales = hoja.getRange(1, 1, 1, encabezados.length).getValues()[0];
+    if (actuales.join("|") !== encabezados.join("|")) acomodarHoja_(hoja);
   }
   return hoja;
+}
+
+// Ancho y formato fijos para que la fecha no salga como ##### al bajar a Excel.
+function darFormatoRespuestas_(hoja) {
+  hoja.setColumnWidth(1, 170);
+  hoja.getRange("A:A").setNumberFormat("dd/mm/yyyy hh:mm");
+}
+
+// Menú Accesos › Acomodar columnas de Respuestas.
+function acomodarRespuestas() {
+  var hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_RESPUESTAS);
+  if (hoja && hoja.getLastRow() > 0) acomodarHoja_(hoja);
+}
+
+// Nombres viejos de columnas que hoy se llaman distinto.
+var ALIAS_COLUMNAS = { "Nombre completo": "Nombre(s)" };
+
+// Reescribe la pestaña con los encabezados actuales y cada dato en su columna.
+// Un renglón escrito con los campos actuales se reconoce porque el correo (el
+// último campo, siempre obligatorio) cae en la última columna; los demás se
+// acomodan según los encabezados que tenía la pestaña. Antes deja un respaldo.
+function acomodarHoja_(hoja) {
+  var libro = hoja.getParent();
+  var copia = hoja.copyTo(libro);
+  copia.setName(HOJA_RESPUESTAS + " respaldo " +
+    Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH.mm"));
+
+  var datos = hoja.getDataRange().getValues();
+  var viejos = datos[0].map(function(t) { t = String(t).trim(); return ALIAS_COLUMNAS[t] || t; });
+  var nuevos = encabezadosRespuestas_();
+  var ultima = nuevos.length - 1;
+
+  var filas = datos.slice(1).filter(function(fila) {
+    return fila.some(function(v) { return v !== ""; });
+  }).map(function(fila) {
+    var actual = fila.length > ultima && fila[ultima] !== "" &&
+      fila.slice(ultima + 1).every(function(v) { return v === ""; });
+    var acomodada = actual ? fila.slice(0, nuevos.length) : nuevos.map(function(titulo) {
+      var i = viejos.indexOf(titulo);
+      return i >= 0 && i < fila.length ? fila[i] : "";
+    });
+    // Igual que en enviarDatos: el apóstrofo conserva ceros a la izquierda.
+    return acomodada.map(function(v, i) {
+      return i < 2 || v === "" ? v : "'" + v;
+    });
+  });
+
+  hoja.clear();
+  darFormatoRespuestas_(hoja);
+  hoja.getRange(1, 1, 1, nuevos.length).setValues([nuevos]);
+  if (filas.length) hoja.getRange(2, 1, filas.length, nuevos.length).setValues(filas);
+  SpreadsheetApp.flush();
 }
 
 // ---------- Prueba de estrés ----------
