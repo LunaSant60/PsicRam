@@ -2,11 +2,13 @@
 // (archivo «Formulario» del proyecto) y guarda las respuestas.
 //
 // La hoja de cálculo usa dos pestañas, que se crean solas si no existen:
-//   «Accesos»:    Nombre | Código | Usado | Enlace
+//   «Accesos»:    Nombre | Código | Usado | Enlace | Ilimitado
 //   «Respuestas»: se llena sola; la fila de encabezados se crea si está vacía.
 //
 // Para invitar a alguien: escribe su nombre en la columna A de «Accesos» y usa
-// el menú Accesos › Generar enlaces. Cada enlace sirve para un solo envío.
+// el menú Accesos › Generar enlaces. Cada enlace sirve para un solo envío, salvo
+// que su renglón diga «Sí» en la columna Ilimitado: ese enlace sirve para siempre
+// (en Usado queda la fecha del último envío) hasta que borres el renglón o el «Sí».
 
 var HOJA_ACCESOS = "Accesos";
 var HOJA_RESPUESTAS = "Respuestas";
@@ -68,6 +70,7 @@ function doGet(e) {
   var plantilla = HtmlService.createTemplateFromFile("Formulario");
   plantilla.estado = !codigo ? "falta" : !acceso ? "invalido" : acceso.usado ? "usado" : "ok";
   plantilla.codigo = plantilla.estado === "ok" ? codigo : "";
+  plantilla.ilimitado = plantilla.estado === "ok" && acceso.ilimitado;
   return plantilla.evaluate()
     .setTitle("Formulario de datos")
     .addMetaTag("viewport", "width=device-width, initial-scale=1");
@@ -111,10 +114,11 @@ function buscarAcceso_(codigo) {
   var hoja = obtenerHojaAccesos_();
   var ultima = hoja.getLastRow();
   if (ultima < 2) return null;
-  var filas = hoja.getRange(2, 1, ultima - 1, 3).getValues();
+  var filas = hoja.getRange(2, 1, ultima - 1, 5).getValues();
   for (var i = 0; i < filas.length; i++) {
     if (String(filas[i][1]) === codigo) {
-      return { fila: i + 2, nombre: filas[i][0], usado: !!filas[i][2] };
+      var ilimitado = filas[i][4] === true || /^(s[ií]|x)$/i.test(String(filas[i][4]).trim());
+      return { fila: i + 2, nombre: filas[i][0], usado: !!filas[i][2] && !ilimitado, ilimitado: ilimitado };
     }
   }
   return null;
@@ -125,7 +129,7 @@ function obtenerHojaAccesos_() {
   var hoja = libro.getSheetByName(HOJA_ACCESOS);
   if (!hoja) {
     hoja = libro.insertSheet(HOJA_ACCESOS);
-    hoja.appendRow(["Nombre", "Código", "Usado", "Enlace"]);
+    hoja.appendRow(["Nombre", "Código", "Usado", "Enlace", "Ilimitado"]);
   }
   return hoja;
 }

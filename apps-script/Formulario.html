@@ -94,6 +94,8 @@
     button[type="reset"] { background: transparent; color: var(--guinda); }
     button[type="reset"]:hover { background: #f3e6e2; }
     #formStatus { margin: 1rem 0 0; color: var(--guinda); }
+    .another { margin-top: 1rem; background: var(--guinda); color: var(--crema); }
+    .another:hover { background: var(--guinda-oscuro); }
     #formStatus:empty { display: none; }
     .notice {
       margin: 0;
@@ -118,6 +120,7 @@
     </header>
     <div class="card-body">
     <p class="notice" id="accessStatus" role="status" aria-live="polite">Cargando...</p>
+    <button type="button" id="otroRegistro" class="another" hidden>Llenar otro registro</button>
 
     <form id="datosForm" hidden>
       <input type="hidden" name="codigo" id="codigo">
@@ -242,6 +245,7 @@
     // Apps Script decide en doGet si el enlace es válido y lo escribe aquí.
     var accessState = <?!= JSON.stringify(estado) ?>;
     var accessCode = <?!= JSON.stringify(codigo) ?>;
+    var unlimited = <?!= JSON.stringify(!!ilimitado) ?>;
     var ACCESS_ERRORS = {
       falta: "Este formulario es privado. Ábrelo con el enlace personal que te enviaron.",
       invalido: "Este enlace no es válido. Pide un enlace nuevo a quien te envió el formulario.",
@@ -280,6 +284,7 @@
           form.hidden = true;
           intro.hidden = true;
           showAccessMessage("¡Gracias! Tus datos se enviaron correctamente.");
+          if (unlimited) anotherButton.hidden = false;
         } else if (result.error === "usado" || result.error === "invalido") {
           form.hidden = true;
           intro.hidden = true;
@@ -316,6 +321,17 @@
         .withFailureHandler(reintentar)
         .enviarDatos(datos);
     }
+
+    // Con un enlace ilimitado se puede capturar a otra persona sin recargar.
+    var anotherButton = document.getElementById("otroRegistro");
+    anotherButton.addEventListener("click", function() {
+      form.reset();
+      anotherButton.hidden = true;
+      accessStatus.hidden = true;
+      intro.hidden = false;
+      form.hidden = false;
+      window.scrollTo(0, 0);
+    });
 
     function showAccessMessage(text) {
       accessStatus.textContent = text;
