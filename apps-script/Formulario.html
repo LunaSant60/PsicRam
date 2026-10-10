@@ -84,6 +84,18 @@
       background: #fff;
     }
     .preview[hidden] { display: none; }
+    .change-photo { margin-top: .5rem; background: transparent; color: var(--guinda); }
+    .change-photo:hover { background: #f3e6e2; }
+    .change-photo[hidden] { display: none; }
+    /* Con foto elegida se esconde el selector, pero sigue en el formulario. */
+    .file-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+      clip: rect(0 0 0 0);
+    }
     .actions {
       display: flex;
       flex-wrap: wrap;
@@ -244,11 +256,13 @@
           <label for="foto1">Foto 1</label>
           <input id="foto1" name="foto1" type="file" accept="image/*" required data-photo>
           <img class="preview" id="foto1Preview" alt="Vista previa de la foto 1" hidden>
+          <button type="button" class="change-photo" id="foto1Cambiar" hidden>Cambiar foto</button>
         </div>
         <div class="field">
           <label for="foto2">Foto 2</label>
           <input id="foto2" name="foto2" type="file" accept="image/*" required data-photo>
           <img class="preview" id="foto2Preview" alt="Vista previa de la foto 2" hidden>
+          <button type="button" class="change-photo" id="foto2Cambiar" hidden>Cambiar foto</button>
         </div>
         <p class="hint field full">Puedes tomar la foto con la cámara o elegirla de tu galería.</p>
       </div>
@@ -364,12 +378,22 @@
       });
     }
 
-    photoInputs.forEach(function(input) {
+    // Con foto elegida se ve la vista previa y «Cambiar foto», que vuelve a abrir
+    // el selector las veces que haga falta; sin foto se ve el selector normal.
+    function mostrarFoto(input) {
       var preview = document.getElementById(input.id + "Preview");
-      input.addEventListener("change", function() {
-        if (preview.src) URL.revokeObjectURL(preview.src);
-        preview.hidden = !input.files[0];
-        if (input.files[0]) preview.src = URL.createObjectURL(input.files[0]);
+      var hayFoto = !!input.files[0];
+      if (preview.src) URL.revokeObjectURL(preview.src);
+      preview.hidden = !hayFoto;
+      if (hayFoto) preview.src = URL.createObjectURL(input.files[0]);
+      document.getElementById(input.id + "Cambiar").hidden = !hayFoto;
+      input.classList.toggle("file-hidden", hayFoto);
+    }
+
+    photoInputs.forEach(function(input) {
+      input.addEventListener("change", function() { mostrarFoto(input); });
+      document.getElementById(input.id + "Cambiar").addEventListener("click", function() {
+        input.click();
       });
     });
 
@@ -428,9 +452,8 @@
 
     form.addEventListener("reset", function() {
       formStatus.textContent = "";
-      photoInputs.forEach(function(input) {
-        document.getElementById(input.id + "Preview").hidden = true;
-      });
+      // El navegador vacía los archivos justo después de este evento.
+      setTimeout(function() { photoInputs.forEach(mostrarFoto); }, 0);
       positiveFields.forEach(function(field) {
         field.setCustomValidity("");
       });
