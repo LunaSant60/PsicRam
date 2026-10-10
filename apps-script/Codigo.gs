@@ -25,7 +25,7 @@ var CAMPOS = [
   { nombre: "materno",   titulo: "Apellido materno",          patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]*$/, opcional: true },
   { nombre: "calle",     titulo: "Calle",                     patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,#\-]+$/ },
   { nombre: "numero",    titulo: "Número",                    patron: /^[0-9]+$/ },
-  { nombre: "interior",  titulo: "Número interior",           patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]*$/, opcional: true },
+  { nombre: "interior",  titulo: "Número interior",           patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,#\-]*$/, opcional: true },
   { nombre: "colonia",   titulo: "Colonia o Fraccionamiento", patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,#\-]+$/ },
   { nombre: "postal",    titulo: "Código postal",             patron: /^[0-9]{1,5}$/ },
   { nombre: "municipio", titulo: "Municipio",                 patron: /^.{1,40}$/ },
