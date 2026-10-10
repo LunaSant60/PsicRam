@@ -16,7 +16,7 @@ var HOJA_ACCESOS = "Accesos";
 var HOJA_RESPUESTAS = "Respuestas";
 
 // URL de la implementación (Implementar › Administrar implementaciones).
-var FORM_URL = "https://script.google.com/macros/s/AKfycbzyTBjmP5KxniCPpAdkrliDGbgBQDIt23h0k6O07PBaGzCEuSMW1phjN1Arc1nyw8bOMw/exec";
+var FORM_URL = "https://script.google.com/macros/s/AKfycby2PsQgH911FicEgApc58_V3F2NfemPVBLQi4t1w5muFxrwQ1fLxCY5Z57VgaAmaK612w/exec";
 
 var CAMPOS = [
   { nombre: "nombres",   titulo: "Nombre(s)",                 patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/ },
