@@ -83,9 +83,12 @@ function doGet(e) {
   plantilla.estado = !codigo ? "falta" : !acceso ? "invalido" : acceso.usado ? "usado" : "ok";
   plantilla.codigo = plantilla.estado === "ok" ? codigo : "";
   plantilla.ilimitado = plantilla.estado === "ok" && acceso.ilimitado;
+  // ALLOWALL deja insertar el formulario en otra página (por ejemplo Google Sites),
+  // donde ya no aparece el aviso de Google Apps Script.
   return plantilla.evaluate()
     .setTitle("Formulario de datos")
-    .addMetaTag("viewport", "width=device-width, initial-scale=1");
+    .addMetaTag("viewport", "width=device-width, initial-scale=1")
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 // El formulario la llama con google.script.run al presionar «Enviar formulario».
