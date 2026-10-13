@@ -121,6 +121,9 @@
     .another { margin-top: 1rem; background: var(--guinda); color: var(--crema); }
     .another:hover { background: var(--guinda-oscuro); }
     #formStatus:empty { display: none; }
+    .error-msg { margin: .3rem 0 0; color: #b3261e; font-size: .85rem; font-weight: 600; }
+    .error-msg[hidden] { display: none; }
+    .invalid { border-color: #b3261e; }
     .notice {
       margin: 0;
       padding: 1rem;
@@ -146,7 +149,7 @@
     <p class="notice" id="accessStatus" role="status" aria-live="polite">Cargando...</p>
     <button type="button" id="otroRegistro" class="another" hidden>Llenar otro registro</button>
 
-    <form id="datosForm" hidden>
+    <form id="datosForm" hidden novalidate>
       <input type="hidden" name="codigo" id="codigo">
       <div class="grid">
         <div class="field">
@@ -314,12 +317,84 @@
       });
     });
 
+    // Google Sites mete el formulario en un marco que bloquea el envío normal
+    // (y con él las burbujas de validación del navegador). Por eso el botón
+    // funciona con su propio clic y los errores se muestran en rojo bajo cada campo.
+    var campos = Array.prototype.slice.call(form.querySelectorAll("input:not([type=hidden]), select"));
+
+    function mensajeDeError(campo) {
+      var v = campo.validity;
+      if (v.valueMissing) {
+        if (campo.type === "file") return "Elige una foto.";
+        if (campo.tagName === "SELECT") return "Elige una opción.";
+        return "Este campo es obligatorio.";
+      }
+      if (v.customError) return campo.validationMessage;
+      if (v.typeMismatch && campo.type === "email") return "Escribe un correo válido (por ejemplo, nombre@dominio.com).";
+      return campo.title || "Revisa este campo.";
+    }
+
+    function cajaDeError(campo) {
+      var contenedor = campo.closest(".field");
+      var caja = contenedor.querySelector(".error-msg");
+      if (!caja) {
+        caja = document.createElement("p");
+        caja.className = "error-msg";
+        caja.setAttribute("role", "alert");
+        contenedor.appendChild(caja);
+      }
+      return caja;
+    }
+
+    function revisarCampo(campo) {
+      if (campo.hasAttribute("data-positive")) validatePositiveField(campo);
+      var valido = campo.checkValidity();
+      var caja = cajaDeError(campo);
+      caja.hidden = valido;
+      caja.textContent = valido ? "" : mensajeDeError(campo);
+      campo.classList.toggle("invalid", !valido);
+      return valido;
+    }
+
+    function revisarTodo() {
+      var primero = null;
+      campos.forEach(function(campo) {
+        if (!revisarCampo(campo) && !primero) primero = campo;
+      });
+      if (primero) {
+        primero.closest(".field").scrollIntoView({ behavior: "smooth", block: "center" });
+        if (primero.type !== "file") primero.focus({ preventScroll: true });
+      }
+      return !primero;
+    }
+
+    // Al corregir un campo con error, el mensaje se actualiza o desaparece.
+    campos.forEach(function(campo) {
+      ["input", "change"].forEach(function(tipo) {
+        campo.addEventListener(tipo, function() {
+          if (campo.classList.contains("invalid")) revisarCampo(campo);
+        });
+      });
+    });
+
+    var submitButton = form.querySelector('button[type="submit"]');
+    submitButton.addEventListener("click", function(event) {
+      event.preventDefault();
+      manejarEnvio();
+    });
     form.addEventListener("submit", function(event) {
       event.preventDefault();
-      positiveFields.forEach(validatePositiveField);
-      if (!form.reportValidity()) return;
+      manejarEnvio();
+    });
 
-      var submitButton = form.querySelector('button[type="submit"]');
+    function manejarEnvio() {
+      if (submitButton.disabled) return;
+      formStatus.textContent = "";
+      if (!revisarTodo()) {
+        formStatus.textContent = "Revisa los campos marcados en rojo.";
+        return;
+      }
+
       submitButton.disabled = true;
       formStatus.textContent = "Enviando datos...";
 
@@ -339,7 +414,7 @@
           submitButton.disabled = false;
           formStatus.textContent = "No se pudo leer una de las fotos. Intenta con otra imagen.";
         });
-    });
+    }
 
     function enviarFormulario(datos, submitButton) {
       enviar(datos, 0, function(result) {
@@ -462,6 +537,11 @@
       formStatus.textContent = "";
       // El navegador vacía los archivos justo después de este evento.
       setTimeout(function() { photoInputs.forEach(mostrarFoto); }, 0);
+      campos.forEach(function(campo) {
+        campo.classList.remove("invalid");
+        var caja = campo.closest(".field").querySelector(".error-msg");
+        if (caja) caja.hidden = true;
+      });
       positiveFields.forEach(function(field) {
         field.setCustomValidity("");
       });
