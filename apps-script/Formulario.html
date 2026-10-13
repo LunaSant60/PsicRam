@@ -266,17 +266,17 @@
         <h2 class="section-title">Fotos</h2>
         <div class="field">
           <label for="foto1">Foto 1</label>
-          <input id="foto1" name="foto1" type="file" accept="image/*" required data-photo>
+          <input id="foto1" name="foto1" type="file" accept="image/*" data-photo>
           <img class="preview" id="foto1Preview" alt="Vista previa de la foto 1" hidden>
           <button type="button" class="change-photo" id="foto1Cambiar" hidden>Cambiar foto</button>
         </div>
         <div class="field">
           <label for="foto2">Foto 2</label>
-          <input id="foto2" name="foto2" type="file" accept="image/*" required data-photo>
+          <input id="foto2" name="foto2" type="file" accept="image/*" data-photo>
           <img class="preview" id="foto2Preview" alt="Vista previa de la foto 2" hidden>
           <button type="button" class="change-photo" id="foto2Cambiar" hidden>Cambiar foto</button>
         </div>
-        <p class="hint field full">Puedes tomar la foto con la cámara o elegirla de tu galería.</p>
+        <p class="hint field full">Opcional. Puedes tomar la foto con la cámara o elegirla de tu galería.</p>
       </div>
       <div class="actions">
         <button type="submit">Enviar formulario</button>
@@ -462,7 +462,7 @@
     var MAX_LADO = 1600;
     function reducirFoto(file) {
       return new Promise(function(resolve, reject) {
-        if (!file) return reject(new Error("sin foto"));
+        if (!file) return resolve("");
         var url = URL.createObjectURL(file);
         var img = new Image();
         img.onload = function() {

@@ -37,7 +37,8 @@ var CAMPOS = [
   { nombre: "correo",    titulo: "Correo electrónico",        patron: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ }
 ];
 
-// Fotos que pide el formulario; cada una llega ya reducida a JPEG desde el navegador.
+// Fotos que pide el formulario (opcionales); cada una llega ya reducida a JPEG
+// desde el navegador.
 var FOTOS = [
   { nombre: "foto1", titulo: "Foto 1" },
   { nombre: "foto2", titulo: "Foto 2" }
@@ -106,10 +107,12 @@ function enviarDatos(datos) {
     valores.push(valor ? "'" + valor : "");
   }
 
+  // Una foto vacía se omite; una que sí viene pero no es válida se rechaza.
   var fotos = [];
   for (var j = 0; j < FOTOS.length; j++) {
-    var foto = leerFoto_(datos[FOTOS[j].nombre]);
-    if (!foto) return { ok: false, error: "datos", message: "Revisa la foto «" + FOTOS[j].titulo + "»." };
+    var enviada = datos[FOTOS[j].nombre];
+    var foto = enviada ? leerFoto_(enviada) : null;
+    if (enviada && !foto) return { ok: false, error: "datos", message: "Revisa la foto «" + FOTOS[j].titulo + "»." };
     fotos.push(foto);
   }
 
@@ -133,7 +136,7 @@ function enviarDatos(datos) {
       tirarArchivos_(archivos);
       return { ok: false, error: acceso ? "usado" : "invalido" };
     }
-    var enlaces = archivos.map(function(archivo) { return archivo.getUrl(); });
+    var enlaces = archivos.map(function(archivo) { return archivo ? archivo.getUrl() : ""; });
     obtenerHojaRespuestas_().appendRow([new Date(), acceso.nombre].concat(valores, enlaces));
     obtenerHojaAccesos_().getRange(acceso.fila, 3).setValue(new Date());
     SpreadsheetApp.flush();
@@ -164,12 +167,13 @@ function guardarFotos_(fotos, invitado, datos) {
   var base = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH.mm.ss") +
     " - " + invitado + " - " + nombre;
   return fotos.map(function(bytes, i) {
+    if (!bytes) return null;
     return carpeta.createFile(Utilities.newBlob(bytes, "image/jpeg", base + " - " + FOTOS[i].titulo + ".jpg"));
   });
 }
 
 function tirarArchivos_(archivos) {
-  archivos.forEach(function(archivo) { archivo.setTrashed(true); });
+  archivos.forEach(function(archivo) { if (archivo) archivo.setTrashed(true); });
 }
 
 // La carpeta se crea la primera vez y se recuerda por su ID; no se comparte con nadie.
