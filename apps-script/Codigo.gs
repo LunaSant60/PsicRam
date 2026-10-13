@@ -19,6 +19,7 @@ var HOJA_RESPUESTAS = "Respuestas";
 var FORM_URL = "https://script.google.com/macros/s/AKfycby2PsQgH911FicEgApc58_V3F2NfemPVBLQi4t1w5muFxrwQ1fLxCY5Z57VgaAmaK612w/exec";
 
 var CAMPOS = [
+  { nombre: "tipo",      titulo: "Tipo de representante",     patron: /^(RG|RC)$/ },
   { nombre: "nombres",   titulo: "Nombre(s)",                 patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/ },
   // Los dos apellidos son opcionales (hay quien solo tiene uno).
   { nombre: "paterno",   titulo: "Apellido paterno",          patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]*$/, opcional: true },

@@ -78,6 +78,7 @@
       var n = ("00" + i).slice(-3);
       return {
         codigo: "PRUEBA" + n,
+        tipo: i % 2 ? "RG" : "RC",
         nombres: "Prueba",
         paterno: i % 2 ? "Estres" : "",
         materno: "Ejemplo",

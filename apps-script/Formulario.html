@@ -149,6 +149,14 @@
     <form id="datosForm" hidden>
       <input type="hidden" name="codigo" id="codigo">
       <div class="grid">
+        <div class="field">
+          <label for="tipo">Tipo de representante</label>
+          <select id="tipo" name="tipo" required>
+            <option value="" selected disabled>Selecciona RG o RC</option>
+            <option>RG</option>
+            <option>RC</option>
+          </select>
+        </div>
         <h2 class="section-title">Datos personales</h2>
         <div class="field full">
           <label for="nombres">Nombre(s)</label>
