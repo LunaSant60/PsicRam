@@ -535,12 +535,16 @@
       accessStatus.hidden = true;
       intro.hidden = false;
       form.hidden = false;
-      window.scrollTo(0, 0);
+      document.querySelector("main").scrollIntoView({ behavior: "smooth", block: "start" });
     });
 
+    // scrollIntoView también mueve la página que contiene al formulario (por
+    // ejemplo Google Sites), así el mensaje queda a la vista aunque el recuadro
+    // insertado sea muy alto y la persona esté hasta abajo, junto al botón.
     function showAccessMessage(text) {
       accessStatus.textContent = text;
       accessStatus.hidden = false;
+      document.querySelector("main").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     function showAccess() {
