@@ -260,6 +260,7 @@
         <div class="field">
           <label for="correo">Correo electrónico</label>
           <input id="correo" name="correo" type="email" autocomplete="email" required
+            pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
             title="Escribe un correo válido (por ejemplo, nombre@dominio.com).">
         </div>
         <h2 class="section-title">Fotos</h2>
@@ -317,6 +318,26 @@
       });
     });
 
+    // En los campos numéricos solo se quedan dígitos y nunca más del máximo,
+    // aunque el teclado del celular ignore el límite o se pegue algo con espacios.
+    // Al pegar un teléfono con lada (+52 449 ...) se toman los últimos 10 dígitos.
+    Array.prototype.forEach.call(document.querySelectorAll('input[inputmode="numeric"]'), function(campo) {
+      var max = campo.maxLength > 0 ? campo.maxLength : Infinity;
+      campo.addEventListener("input", function() {
+        var limpio = campo.value.replace(/\D/g, "").slice(0, max);
+        if (limpio !== campo.value) campo.value = limpio;
+      });
+      campo.addEventListener("paste", function(event) {
+        var texto = (event.clipboardData || window.clipboardData).getData("text");
+        var digitos = texto.replace(/\D/g, "");
+        if (campo.id === "telefono" && digitos.length > max) {
+          event.preventDefault();
+          campo.value = digitos.slice(-max);
+          campo.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      });
+    });
+
     // Google Sites mete el formulario en un marco que bloquea el envío normal
     // (y con él las burbujas de validación del navegador). Por eso el botón
     // funciona con su propio clic y los errores se muestran en rojo bajo cada campo.
@@ -330,7 +351,7 @@
         return "Este campo es obligatorio.";
       }
       if (v.customError) return campo.validationMessage;
-      if (v.typeMismatch && campo.type === "email") return "Escribe un correo válido (por ejemplo, nombre@dominio.com).";
+      if ((v.typeMismatch || v.patternMismatch) && campo.type === "email") return "Escribe un correo válido (por ejemplo, nombre@dominio.com).";
       return campo.title || "Revisa este campo.";
     }
 
