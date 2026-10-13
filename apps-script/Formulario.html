@@ -298,6 +298,7 @@
     var accessState = <?!= JSON.stringify(estado) ?>;
     var accessCode = <?!= JSON.stringify(codigo) ?>;
     var unlimited = <?!= JSON.stringify(!!ilimitado) ?>;
+    var abierto = <?!= JSON.stringify(!!abierto) ?>;
     var ACCESS_ERRORS = {
       falta: "Este formulario es privado. Ábrelo con el enlace personal que te enviaron.",
       invalido: "Este enlace no es válido. Pide un enlace nuevo a quien te envió el formulario.",
@@ -413,6 +414,10 @@
       formStatus.textContent = "";
       if (!revisarTodo()) {
         formStatus.textContent = "Revisa los campos marcados en rojo.";
+        return;
+      }
+      if (abierto && !campos.some(function(c) { return c.value.trim() !== ""; })) {
+        formStatus.textContent = "Llena al menos un campo.";
         return;
       }
 
@@ -553,9 +558,22 @@
         return;
       }
       document.getElementById("codigo").value = accessCode;
+      if (abierto) abrirFormulario();
       accessStatus.hidden = true;
       intro.hidden = false;
       form.hidden = false;
+    }
+
+    // Formulario abierto: ningún campo es obligatorio, pero lo que se escriba
+    // se sigue revisando con las mismas reglas.
+    function abrirFormulario() {
+      intro.textContent = "Todos los campos son opcionales: llena los que tengas y presiona «Enviar formulario».";
+      form.querySelectorAll("[required]").forEach(function(c) { c.removeAttribute("required"); });
+      form.querySelectorAll("option[disabled]").forEach(function(o) { o.disabled = false; });
+      form.querySelectorAll(".hint").forEach(function(p) {
+        var texto = p.textContent.replace(/^Opcional\.\s*/, "");
+        if (texto) p.textContent = texto; else p.remove();
+      });
     }
 
     form.addEventListener("reset", function() {

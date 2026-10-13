@@ -2,7 +2,7 @@
 // (archivo «Formulario» del proyecto) y guarda las respuestas.
 //
 // La hoja de cálculo usa dos pestañas, que se crean solas si no existen:
-//   «Accesos»:    Nombre | Código | Usado | Enlace | Ilimitado
+//   «Accesos»:    Nombre | Código | Usado | Enlace | Ilimitado | Abierto
 //   «Respuestas»: se llena sola; la fila de encabezados se crea si está vacía.
 // Las fotos se guardan en la carpeta privada «Formulario - Fotos» de tu Drive y
 // en «Respuestas» queda el enlace a cada una.
@@ -11,6 +11,9 @@
 // el menú Accesos › Generar enlaces. Cada enlace sirve para un solo envío, salvo
 // que su renglón diga «Sí» en la columna Ilimitado: ese enlace sirve para siempre
 // (en Usado queda la fecha del último envío) hasta que borres el renglón o el «Sí».
+// Si el renglón dice «Sí» en la columna Abierto, ese enlace abre el formulario
+// con todos los campos opcionales (lo que se escriba se valida igual). Todo llega
+// a la misma pestaña «Respuestas».
 
 var HOJA_ACCESOS = "Accesos";
 var HOJA_RESPUESTAS = "Respuestas";
@@ -61,6 +64,8 @@ function generarEnlaces() {
   var hoja = obtenerHojaAccesos_();
   var ultima = hoja.getLastRow();
   if (ultima < 2) return;
+  // Las hojas de antes no tienen la columna Abierto.
+  if (!hoja.getRange(1, 6).getValue()) hoja.getRange(1, 6).setValue("Abierto");
   var filas = hoja.getRange(2, 1, ultima - 1, 4).getValues();
   filas.forEach(function(fila) {
     if (fila[0] && !fila[1]) {
@@ -86,6 +91,7 @@ function doGet(e) {
   plantilla.estado = !codigo ? "falta" : !acceso ? "invalido" : acceso.usado ? "usado" : "ok";
   plantilla.codigo = plantilla.estado === "ok" ? codigo : "";
   plantilla.ilimitado = plantilla.estado === "ok" && acceso.ilimitado;
+  plantilla.abierto = plantilla.estado === "ok" && acceso.abierto;
   // ALLOWALL deja insertar el formulario en otra página (por ejemplo Google Sites),
   // donde ya no aparece el aviso de Google Apps Script.
   return plantilla.evaluate()
@@ -97,11 +103,16 @@ function doGet(e) {
 // El formulario la llama con google.script.run al presionar «Enviar formulario».
 function enviarDatos(datos) {
   datos = datos || {};
+  // Primero el enlace: de él depende si los campos son obligatorios.
+  var previo = buscarAcceso_(datos.codigo);
+  if (!previo) return { ok: false, error: "invalido" };
+  if (previo.usado) return { ok: false, error: "usado" };
+
   var valores = [];
   for (var i = 0; i < CAMPOS.length; i++) {
     var campo = CAMPOS[i];
     var valor = String(datos[campo.nombre] || "").trim();
-    if ((!valor && !campo.opcional) || (valor && !campo.patron.test(valor))) {
+    if ((!valor && !campo.opcional && !previo.abierto) || (valor && !campo.patron.test(valor))) {
       return { ok: false, error: "datos", message: "Revisa el campo «" + campo.titulo + "»." };
     }
     // El apóstrofo evita que Sheets quite ceros a la izquierda (OCR, CP, etc.).
@@ -119,6 +130,10 @@ function enviarDatos(datos) {
     }
   }
 
+  // En el formulario abierto puede faltar cualquier campo, pero no todos.
+  var algo = valores.some(String) || FOTOS.some(function(f) { return datos[f.nombre]; });
+  if (!algo) return { ok: false, error: "datos", message: "Llena al menos un campo." };
+
   // Una foto vacía se omite; una que sí viene pero no es válida se rechaza.
   var fotos = [];
   for (var j = 0; j < FOTOS.length; j++) {
@@ -130,9 +145,6 @@ function enviarDatos(datos) {
 
   // Guardar las fotos es lo más lento, así que va antes del candado y solo si
   // el enlace sirve; si al final el enlace ya no sirve, se mandan a la papelera.
-  var previo = buscarAcceso_(datos.codigo);
-  if (!previo) return { ok: false, error: "invalido" };
-  if (previo.usado) return { ok: false, error: "usado" };
   var archivos = guardarFotos_(fotos, previo.nombre, datos);
 
   // Solo la consulta y la escritura van dentro del candado, para que muchos
@@ -220,14 +232,20 @@ function buscarAcceso_(codigo) {
   var hoja = obtenerHojaAccesos_();
   var ultima = hoja.getLastRow();
   if (ultima < 2) return null;
-  var filas = hoja.getRange(2, 1, ultima - 1, 5).getValues();
+  var filas = hoja.getRange(2, 1, ultima - 1, 6).getValues();
   for (var i = 0; i < filas.length; i++) {
     if (String(filas[i][1]) === codigo) {
-      var ilimitado = filas[i][4] === true || /^(s[ií]|x)$/i.test(String(filas[i][4]).trim());
-      return { fila: i + 2, nombre: filas[i][0], usado: !!filas[i][2] && !ilimitado, ilimitado: ilimitado };
+      var ilimitado = esSi_(filas[i][4]);
+      return { fila: i + 2, nombre: filas[i][0], usado: !!filas[i][2] && !ilimitado,
+        ilimitado: ilimitado, abierto: esSi_(filas[i][5]) };
     }
   }
   return null;
+}
+
+// «Sí», «Si», «x» o una casilla marcada.
+function esSi_(valor) {
+  return valor === true || /^(s[ií]|x)$/i.test(String(valor).trim());
 }
 
 function obtenerHojaAccesos_() {
@@ -235,7 +253,7 @@ function obtenerHojaAccesos_() {
   var hoja = libro.getSheetByName(HOJA_ACCESOS);
   if (!hoja) {
     hoja = libro.insertSheet(HOJA_ACCESOS);
-    hoja.appendRow(["Nombre", "Código", "Usado", "Enlace", "Ilimitado"]);
+    hoja.appendRow(["Nombre", "Código", "Usado", "Enlace", "Ilimitado", "Abierto"]);
   }
   return hoja;
 }
