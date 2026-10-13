@@ -51,6 +51,7 @@ function onOpen() {
     .createMenu("Accesos")
     .addItem("Generar enlaces", "generarEnlaces")
     .addItem("Acomodar columnas de Respuestas", "acomodarRespuestas")
+    .addItem("Separar nombres y apellidos", "separarNombres")
     .addItem("Ver carpeta de fotos", "verCarpetaFotos")
     .addToUi();
 }
@@ -105,6 +106,17 @@ function enviarDatos(datos) {
     }
     // El apóstrofo evita que Sheets quite ceros a la izquierda (OCR, CP, etc.).
     valores.push(valor ? "'" + valor : "");
+  }
+
+  // Si escribió nombre y apellidos juntos en «Nombre(s)», se reparten.
+  var iNombres = indiceCampo_("nombres");
+  if (!valores[iNombres + 1] && !valores[iNombres + 2]) {
+    var partes = partirNombre_(valores[iNombres].slice(1));
+    if (partes) {
+      valores[iNombres] = "'" + partes.nombres;
+      valores[iNombres + 1] = "'" + partes.paterno;
+      valores[iNombres + 2] = "'" + partes.materno;
+    }
   }
 
   // Una foto vacía se omite; una que sí viene pero no es válida se rechaza.
@@ -300,6 +312,92 @@ function acomodarHoja_(hoja) {
   hoja.getRange(1, 1, 1, nuevos.length).setValues([nuevos]);
   if (filas.length) hoja.getRange(2, 1, filas.length, nuevos.length).setValues(filas);
   SpreadsheetApp.flush();
+}
+
+// ---------- Separar nombres ----------
+// Palabras que forman parte del nombre o apellido que les sigue («de la Cruz»).
+var PARTICULAS = ["de", "del", "la", "las", "los", "y", "san", "santa", "van", "von", "da", "di"];
+
+// Segundos nombres comunes que casi nunca son apellido: «José Antonio Santillán»
+// son dos nombres y un apellido, no un nombre y dos apellidos.
+var SEGUNDOS_NOMBRES = ("antonio luis manuel carlos alberto alejandro alejandra andres angel " +
+  "armando arturo cristina daniel eduardo elena enrique ernesto fernanda fernando francisco " +
+  "gabriela guadalupe ignacio isabel javier jesus jose josefina juan juana luisa lucia " +
+  "maria mariana miguel patricia rafael ricardo roberto teresa").split(" ");
+
+function sinAcentos_(texto) {
+  return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+// Reparte un nombre completo en { nombres, paterno, materno }. Los dos últimos
+// pedazos son los apellidos y todo lo anterior son los nombres. Devuelve null
+// si hay menos de tres pedazos (no se puede saber cuál es apellido).
+function partirNombre_(completo) {
+  // «TavaresMojica» → «Tavares Mojica».
+  var palabras = String(completo).replace(/([a-záéíóúüñ])([A-ZÁÉÍÓÚÜÑ])/g, "$1 $2")
+    .trim().split(/\s+/).filter(String);
+  // Las partículas se pegan a la palabra que sigue: «de», «la», «Cruz» → «de la Cruz».
+  var pedazos = [];
+  var pendiente = [];
+  palabras.forEach(function(p) {
+    pendiente.push(p);
+    if (PARTICULAS.indexOf(sinAcentos_(p)) < 0) {
+      pedazos.push(pendiente.join(" "));
+      pendiente = [];
+    }
+  });
+  if (pendiente.length) {
+    if (pedazos.length) pedazos[pedazos.length - 1] += " " + pendiente.join(" ");
+    else pedazos.push(pendiente.join(" "));
+  }
+  if (pedazos.length < 3) return null;
+
+  var corte = pedazos.length - 2;
+  if (pedazos.length === 3) {
+    var primero = sinAcentos_(pedazos[0]);
+    var segundo = sinAcentos_(pedazos[1]);
+    // «Ma Gloria Meléndez» o «José Antonio Santillán»: dos nombres y un apellido.
+    if (primero === "ma" || SEGUNDOS_NOMBRES.indexOf(segundo) >= 0) corte = 2;
+  }
+  return {
+    nombres: pedazos.slice(0, corte).join(" "),
+    paterno: pedazos[corte] || "",
+    materno: pedazos.slice(corte + 1).join(" ")
+  };
+}
+
+function indiceCampo_(nombre) {
+  for (var i = 0; i < CAMPOS.length; i++) if (CAMPOS[i].nombre === nombre) return i;
+  return -1;
+}
+
+// Menú Accesos › Separar nombres y apellidos. En los renglones de «Respuestas»
+// sin apellidos, reparte el nombre completo escrito en «Nombre(s)». Antes deja
+// un respaldo de la pestaña.
+function separarNombres() {
+  var hoja = obtenerHojaRespuestas_();
+  var ultima = hoja.getLastRow();
+  if (ultima < 2) return;
+  var col = 3 + indiceCampo_("nombres"); // después de Fecha e Invitado
+  var rango = hoja.getRange(2, col, ultima - 1, 3);
+  var filas = rango.getValues();
+  var cambios = 0;
+  var nuevas = filas.map(function(fila) {
+    var partes = !String(fila[1]).trim() && !String(fila[2]).trim() && partirNombre_(fila[0]);
+    if (!partes) return fila.map(function(v) { return v === "" ? "" : "'" + v; });
+    cambios++;
+    return ["'" + partes.nombres, "'" + partes.paterno, partes.materno ? "'" + partes.materno : ""];
+  });
+  if (!cambios) {
+    SpreadsheetApp.getUi().alert("No hay nombres que separar.");
+    return;
+  }
+  hoja.copyTo(hoja.getParent()).setName(HOJA_RESPUESTAS + " respaldo " +
+    Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH.mm"));
+  rango.setValues(nuevas);
+  SpreadsheetApp.flush();
+  SpreadsheetApp.getUi().alert("Listo: se separaron " + cambios + " nombres. " +
+    "Hay una copia de antes en la pestaña de respaldo.");
 }
 
 // ---------- Prueba de estrés ----------
