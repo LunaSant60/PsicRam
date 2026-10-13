@@ -318,20 +318,15 @@ function acomodarHoja_(hoja) {
 // Palabras que forman parte del nombre o apellido que les sigue («de la Cruz»).
 var PARTICULAS = ["de", "del", "la", "las", "los", "y", "san", "santa", "van", "von", "da", "di"];
 
-// Segundos nombres comunes que casi nunca son apellido: «José Antonio Santillán»
-// son dos nombres y un apellido, no un nombre y dos apellidos.
-var SEGUNDOS_NOMBRES = ("antonio luis manuel carlos alberto alejandro alejandra andres angel " +
-  "armando arturo cristina daniel eduardo elena enrique ernesto fernanda fernando francisco " +
-  "gabriela guadalupe ignacio isabel javier jesus jose josefina juan juana luisa lucia " +
-  "maria mariana miguel patricia rafael ricardo roberto teresa").split(" ");
-
 function sinAcentos_(texto) {
   return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-// Reparte un nombre completo en { nombres, paterno, materno }. Los dos últimos
-// pedazos son los apellidos y todo lo anterior son los nombres. Devuelve null
-// si hay menos de tres pedazos (no se puede saber cuál es apellido).
+// Reparte un nombre completo en { nombres, paterno, materno }:
+//   2 pedazos: nombre | paterno
+//   3 pedazos: nombre | paterno | materno
+//   4 o más:   los dos últimos son paterno y materno; lo demás, nombres.
+// Con un solo pedazo devuelve null (no hay nada que separar).
 function partirNombre_(completo) {
   // «TavaresMojica» → «Tavares Mojica».
   var palabras = String(completo).replace(/([a-záéíóúüñ])([A-ZÁÉÍÓÚÜÑ])/g, "$1 $2")
@@ -350,15 +345,9 @@ function partirNombre_(completo) {
     if (pedazos.length) pedazos[pedazos.length - 1] += " " + pendiente.join(" ");
     else pedazos.push(pendiente.join(" "));
   }
-  if (pedazos.length < 3) return null;
+  if (pedazos.length < 2) return null;
 
-  var corte = pedazos.length - 2;
-  if (pedazos.length === 3) {
-    var primero = sinAcentos_(pedazos[0]);
-    var segundo = sinAcentos_(pedazos[1]);
-    // «Ma Gloria Meléndez» o «José Antonio Santillán»: dos nombres y un apellido.
-    if (primero === "ma" || SEGUNDOS_NOMBRES.indexOf(segundo) >= 0) corte = 2;
-  }
+  var corte = Math.max(1, pedazos.length - 2);
   return {
     nombres: pedazos.slice(0, corte).join(" "),
     paterno: pedazos[corte] || "",
