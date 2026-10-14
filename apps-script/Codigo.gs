@@ -13,7 +13,9 @@
 // (en Usado queda la fecha del último envío) hasta que borres el renglón o el «Sí».
 // Si el renglón dice «Sí» en la columna Abierto, ese enlace abre el formulario
 // con todos los campos opcionales (lo que se escriba se valida igual). Todo llega
-// a la misma pestaña «Respuestas».
+// a la misma pestaña «Respuestas»; su primera columna, «Registro», dice RC
+// (Registro Completo, formulario definitivo) o RI (Registro Incompleto,
+// formulario abierto).
 
 var HOJA_ACCESOS = "Accesos";
 var HOJA_RESPUESTAS = "Respuestas";
@@ -161,7 +163,8 @@ function enviarDatos(datos) {
       return { ok: false, error: acceso ? "usado" : "invalido" };
     }
     var enlaces = archivos.map(function(archivo) { return archivo ? archivo.getUrl() : ""; });
-    obtenerHojaRespuestas_().appendRow([new Date(), acceso.nombre].concat(valores, enlaces));
+    var registro = acceso.abierto ? "RI" : "RC";
+    obtenerHojaRespuestas_().appendRow([registro, new Date(), acceso.nombre].concat(valores, enlaces));
     obtenerHojaAccesos_().getRange(acceso.fila, 3).setValue(new Date());
     SpreadsheetApp.flush();
     return { ok: true };
@@ -259,7 +262,7 @@ function obtenerHojaAccesos_() {
 }
 
 function encabezadosRespuestas_() {
-  return ["Fecha", "Invitado"]
+  return ["Registro", "Fecha", "Invitado"]
     .concat(CAMPOS.map(function(c) { return c.titulo; }))
     .concat(FOTOS.map(function(f) { return f.titulo; }));
 }
@@ -283,8 +286,9 @@ function obtenerHojaRespuestas_() {
 
 // Ancho y formato fijos para que la fecha no salga como ##### al bajar a Excel.
 function darFormatoRespuestas_(hoja) {
-  hoja.setColumnWidth(1, 170);
-  hoja.getRange("A:A").setNumberFormat("dd/mm/yyyy hh:mm");
+  hoja.setColumnWidth(1, 80);
+  hoja.setColumnWidth(2, 170);
+  hoja.getRange("B:B").setNumberFormat("dd/mm/yyyy hh:mm");
 }
 
 // Menú Accesos › Acomodar columnas de Respuestas.
@@ -319,9 +323,17 @@ function acomodarHoja_(hoja) {
       var i = actual ? k : viejos.indexOf(titulo);
       return i >= 0 && i < fila.length ? fila[i] : "";
     });
+    // Los renglones de antes de la columna «Registro»: RC si traen todos los
+    // campos obligatorios, RI si les falta alguno.
+    if (acomodada[0] === "") {
+      var completo = CAMPOS.every(function(c) {
+        return c.opcional || String(acomodada[nuevos.indexOf(c.titulo)]).trim() !== "";
+      });
+      acomodada[0] = completo ? "RC" : "RI";
+    }
     // Igual que en enviarDatos: el apóstrofo conserva ceros a la izquierda.
     return acomodada.map(function(v, i) {
-      return i < 2 || v === "" ? v : "'" + v;
+      return i < 3 || v === "" ? v : "'" + v;
     });
   });
 
@@ -385,7 +397,7 @@ function separarNombres() {
   var hoja = obtenerHojaRespuestas_();
   var ultima = hoja.getLastRow();
   if (ultima < 2) return;
-  var col = 3 + indiceCampo_("nombres"); // después de Fecha e Invitado
+  var col = 4 + indiceCampo_("nombres"); // después de Registro, Fecha e Invitado
   var rango = hoja.getRange(2, col, ultima - 1, 3);
   var filas = rango.getValues();
   var cambios = 0;
@@ -434,7 +446,7 @@ function borrarPruebas() {
   [obtenerHojaAccesos_(), obtenerHojaRespuestas_()].forEach(function(hoja) {
     var ultima = hoja.getLastRow();
     if (ultima < 2) return;
-    var col = hoja.getName() === HOJA_ACCESOS ? 1 : 2;
+    var col = hoja.getName() === HOJA_ACCESOS ? 1 : 3;
     var nombres = hoja.getRange(2, col, ultima - 1, 1).getValues();
     // De abajo hacia arriba, borrando cada bloque seguido de renglones de prueba.
     var fin = -1;
