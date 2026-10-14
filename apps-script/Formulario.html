@@ -266,7 +266,7 @@
         <h2 class="section-title">Fotos</h2>
         <div class="field">
           <label for="foto1">Foto 1</label>
-          <input id="foto1" name="foto1" type="file" accept="image/*" data-photo>
+          <input id="foto1" name="foto1" type="file" accept="image/*" data-photo required>
           <img class="preview" id="foto1Preview" alt="Vista previa de la foto 1" hidden>
           <button type="button" class="change-photo" id="foto1Cambiar" hidden>Cambiar foto</button>
         </div>
@@ -276,7 +276,7 @@
           <img class="preview" id="foto2Preview" alt="Vista previa de la foto 2" hidden>
           <button type="button" class="change-photo" id="foto2Cambiar" hidden>Cambiar foto</button>
         </div>
-        <p class="hint field full">Opcional. Puedes tomar la foto con la cámara o elegirla de tu galería.</p>
+        <p class="hint field full">La Foto 1 es obligatoria; la Foto 2 es opcional. Puedes tomarlas con la cámara o elegirlas de tu galería.</p>
       </div>
       <div class="actions">
         <button type="submit">Enviar formulario</button>
@@ -571,7 +571,8 @@
       form.querySelectorAll("[required]").forEach(function(c) { c.removeAttribute("required"); });
       form.querySelectorAll("option[disabled]").forEach(function(o) { o.disabled = false; });
       form.querySelectorAll(".hint").forEach(function(p) {
-        var texto = p.textContent.replace(/^Opcional\.\s*/, "");
+        var texto = p.textContent.replace(/^Opcional\.\s*/, "")
+          .replace("La Foto 1 es obligatoria; la Foto 2 es opcional. ", "");
         if (texto) p.textContent = texto; else p.remove();
       });
     }

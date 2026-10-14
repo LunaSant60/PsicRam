@@ -42,10 +42,10 @@ var CAMPOS = [
   { nombre: "correo",    titulo: "Correo electrónico",        patron: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ }
 ];
 
-// Fotos que pide el formulario (opcionales); cada una llega ya reducida a JPEG
-// desde el navegador.
+// Fotos que pide el formulario; cada una llega ya reducida a JPEG desde el
+// navegador. La Foto 1 es obligatoria en el formulario definitivo (no en el abierto).
 var FOTOS = [
-  { nombre: "foto1", titulo: "Foto 1" },
+  { nombre: "foto1", titulo: "Foto 1", obligatoria: true },
   { nombre: "foto2", titulo: "Foto 2" }
 ];
 var CARPETA_FOTOS = "Formulario - Fotos";
@@ -140,6 +140,9 @@ function enviarDatos(datos) {
   var fotos = [];
   for (var j = 0; j < FOTOS.length; j++) {
     var enviada = datos[FOTOS[j].nombre];
+    if (!enviada && FOTOS[j].obligatoria && !previo.abierto) {
+      return { ok: false, error: "datos", message: "Sube la foto «" + FOTOS[j].titulo + "»." };
+    }
     var foto = enviada ? leerFoto_(enviada) : null;
     if (enviada && !foto) return { ok: false, error: "datos", message: "Revisa la foto «" + FOTOS[j].titulo + "»." };
     fotos.push(foto);
