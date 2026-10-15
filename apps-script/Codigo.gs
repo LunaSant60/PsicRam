@@ -302,6 +302,8 @@ function siguienteNumero_(hoja) {
 // Ancho y formato fijos para que la fecha no salga como ##### al bajar a Excel.
 function darFormatoRespuestas_(hoja) {
   hoja.setColumnWidth(1, 50);
+  // La columna A antes era la fecha; sin esto el número 79 se ve como 19/03/1900.
+  hoja.getRange("A:A").setNumberFormat("0");
   hoja.setColumnWidth(2, 80);
   hoja.setColumnWidth(3, 170);
   hoja.getRange("C:C").setNumberFormat("dd/mm/yyyy hh:mm");
