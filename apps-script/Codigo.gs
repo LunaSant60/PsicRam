@@ -14,9 +14,9 @@
 // Si el renglón dice «Sí» en la columna Abierto, ese enlace abre el formulario
 // con todos los campos opcionales (lo que se escriba se valida igual). Todo llega
 // a la misma pestaña «Respuestas». Su primera columna, «No.», numera cada
-// registro (1, 2, 3...), y la segunda, «Registro», dice RC
-// (Registro Completo, formulario definitivo) o RI (Registro Incompleto,
-// formulario abierto).
+// registro (1, 2, 3...), y la segunda, «Registro», dice RC (Registro
+// Completo: trae todo lo que pide el formulario definitivo, fotos incluidas)
+// o RI (Registro Incompleto: le falta algo), sin importar por qué enlace llegó.
 
 var HOJA_ACCESOS = "Accesos";
 var HOJA_RESPUESTAS = "Respuestas";
@@ -167,7 +167,12 @@ function enviarDatos(datos) {
       return { ok: false, error: acceso ? "usado" : "invalido" };
     }
     var enlaces = archivos.map(function(archivo) { return archivo ? archivo.getUrl() : ""; });
-    var registro = acceso.abierto ? "RI" : "RC";
+    var registro = estaCompleto_(function(titulo) {
+      var k = CAMPOS.map(function(c) { return c.titulo; }).indexOf(titulo);
+      if (k >= 0) return valores[k];
+      k = FOTOS.map(function(f) { return f.titulo; }).indexOf(titulo);
+      return k >= 0 ? enlaces[k] : "";
+    }) ? "RC" : "RI";
     var hoja = obtenerHojaRespuestas_();
     var numero = siguienteNumero_(hoja);
     hoja.appendRow([numero, registro, new Date(), acceso.nombre].concat(valores, enlaces));
@@ -290,6 +295,15 @@ function obtenerHojaRespuestas_() {
   return hoja;
 }
 
+// true si el registro trae todo lo que pide el formulario definitivo: los
+// campos obligatorios y las fotos obligatorias. «valor» da lo guardado por título.
+function estaCompleto_(valor) {
+  var titulos = CAMPOS.filter(function(c) { return !c.opcional; })
+    .concat(FOTOS.filter(function(f) { return f.obligatoria; }))
+    .map(function(x) { return x.titulo; });
+  return titulos.every(function(t) { return String(valor(t) || "").replace(/^'/, "").trim() !== ""; });
+}
+
 // El número que sigue al del último renglón (1 si no hay registros). Se toma
 // del último y no del total, para no repetir números si se borra un renglón.
 function siguienteNumero_(hoja) {
@@ -346,15 +360,10 @@ function acomodarHoja_(hoja) {
     var numero = Number(acomodada[0]);
     if (numero > 0) ultimoNumero = Math.max(ultimoNumero, numero);
     else acomodada[0] = ++ultimoNumero;
-    // Los renglones de antes de la columna «Registro»: RC si traen todos los
-    // campos obligatorios, RI si les falta alguno.
-    var iRegistro = nuevos.indexOf("Registro");
-    if (acomodada[iRegistro] === "") {
-      var completo = CAMPOS.every(function(c) {
-        return c.opcional || String(acomodada[nuevos.indexOf(c.titulo)]).trim() !== "";
-      });
-      acomodada[iRegistro] = completo ? "RC" : "RI";
-    }
+    // RC o RI se vuelve a calcular con lo que trae cada renglón.
+    acomodada[nuevos.indexOf("Registro")] = estaCompleto_(function(titulo) {
+      return acomodada[nuevos.indexOf(titulo)];
+    }) ? "RC" : "RI";
     // Igual que en enviarDatos: el apóstrofo conserva ceros a la izquierda.
     return acomodada.map(function(v, i) {
       return i < 4 || v === "" ? v : "'" + v;
