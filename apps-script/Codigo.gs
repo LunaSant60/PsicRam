@@ -44,10 +44,10 @@ var CAMPOS = [
 ];
 
 // Fotos que pide el formulario; cada una llega ya reducida a JPEG desde el
-// navegador. La Foto 1 es obligatoria en el formulario definitivo (no en el abierto).
+// navegador. Las dos son obligatorias en el formulario definitivo (no en el abierto).
 var FOTOS = [
   { nombre: "foto1", titulo: "Foto 1", obligatoria: true },
-  { nombre: "foto2", titulo: "Foto 2" }
+  { nombre: "foto2", titulo: "Foto 2", obligatoria: true }
 ];
 var CARPETA_FOTOS = "Formulario - Fotos";
 var MAX_FOTO_BYTES = 5 * 1024 * 1024;
