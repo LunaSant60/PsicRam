@@ -13,7 +13,7 @@
 // (en Usado queda la fecha del último envío) hasta que borres el renglón o el «Sí».
 // Si el renglón dice «Sí» en la columna Abierto, ese enlace abre el formulario
 // con todos los campos opcionales (lo que se escriba se valida igual). Todo llega
-// a la misma pestaña «Respuestas». Su primera columna, «No.», numera cada
+// a la misma pestaña «Respuestas». Su primera columna, «Consecutivo», numera cada
 // registro (1, 2, 3...), y la segunda, «Registro», dice RC (Registro
 // Completo: trae todo lo que pide el formulario definitivo, fotos incluidas)
 // o RI (Registro Incompleto: le falta algo), sin importar por qué enlace llegó.
@@ -176,6 +176,8 @@ function enviarDatos(datos) {
     var hoja = obtenerHojaRespuestas_();
     var numero = siguienteNumero_(hoja);
     hoja.appendRow([numero, registro, new Date(), acceso.nombre].concat(valores, enlaces));
+    // Que el consecutivo se vea como número aunque la columna traiga formato de fecha.
+    hoja.getRange(hoja.getLastRow(), 1).setNumberFormat("0");
     obtenerHojaAccesos_().getRange(acceso.fila, 3).setValue(new Date());
     SpreadsheetApp.flush();
     return { ok: true };
@@ -273,7 +275,7 @@ function obtenerHojaAccesos_() {
 }
 
 function encabezadosRespuestas_() {
-  return ["No.", "Registro", "Fecha", "Invitado"]
+  return ["Consecutivo", "Registro", "Fecha", "Invitado"]
     .concat(CAMPOS.map(function(c) { return c.titulo; }))
     .concat(FOTOS.map(function(f) { return f.titulo; }));
 }
@@ -330,7 +332,7 @@ function acomodarRespuestas() {
 }
 
 // Nombres viejos de columnas que hoy se llaman distinto.
-var ALIAS_COLUMNAS = { "Nombre completo": "Nombre(s)" };
+var ALIAS_COLUMNAS = { "Nombre completo": "Nombre(s)", "No.": "Consecutivo" };
 
 // Reescribe la pestaña con los encabezados actuales y cada dato en su columna.
 // Un renglón con datos más allá de los encabezados viejos se escribió con los
@@ -430,7 +432,7 @@ function separarNombres() {
   var hoja = obtenerHojaRespuestas_();
   var ultima = hoja.getLastRow();
   if (ultima < 2) return;
-  var col = 5 + indiceCampo_("nombres"); // después de No., Registro, Fecha e Invitado
+  var col = 5 + indiceCampo_("nombres"); // después de Consecutivo, Registro, Fecha e Invitado
   var rango = hoja.getRange(2, col, ultima - 1, 3);
   var filas = rango.getValues();
   var cambios = 0;
