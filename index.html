@@ -276,6 +276,45 @@
   .info-card dt:first-child{margin-top:0;}
   .info-card dd{margin:.2rem 0 0; font-weight:600;}
 
+  /* consultorio */
+  .section.tint{background:var(--surface-2);}
+  .gallery{
+    display:grid; grid-template-columns:1.55fr 1fr; grid-template-rows:1fr 1fr;
+    gap:1rem; height:clamp(380px,44vw,520px);
+  }
+  .gallery .main{grid-row:span 2;}
+  .photo{margin:0; position:relative; overflow:hidden; border-radius:1rem; background:var(--surface-3); box-shadow:var(--shadow);}
+  .photo button{all:unset; display:block; width:100%; height:100%; cursor:zoom-in;}
+  .photo button:focus-visible{outline:3px solid var(--focus); outline-offset:-3px;}
+  .photo img{width:100%; height:100%; object-fit:cover; display:block; transition:transform .6s ease;}
+  .photo:hover img{transform:scale(1.03);}
+  .photo figcaption{
+    position:absolute; left:0; right:0; bottom:0; pointer-events:none;
+    padding:2.2rem 1rem .8rem; color:#fff; font-weight:700; font-size:.88rem;
+    background:linear-gradient(to top, rgba(20,20,20,.62), transparent);
+  }
+  @media (max-width:760px){
+    .gallery{grid-template-columns:1fr; grid-template-rows:none; height:auto;}
+    .gallery .main{grid-row:auto;}
+    .gallery .photo{aspect-ratio:16/10;}
+  }
+  .arrive{margin-top:1.4rem; display:grid; grid-template-columns:1.6fr 1fr; gap:1rem;}
+  .arrive .photo{aspect-ratio:auto; height:300px;}
+  @media (max-width:760px){
+    .arrive{grid-template-columns:1fr;}
+    .arrive .photo{height:auto; aspect-ratio:4/3;}
+  }
+  dialog.lightbox{
+    border:none; padding:0; background:transparent; max-width:min(1200px,94vw); max-height:92vh;
+  }
+  dialog.lightbox::backdrop{background:rgba(15,12,12,.86);}
+  dialog.lightbox img{display:block; max-width:100%; max-height:84vh; border-radius:.8rem; margin:0 auto;}
+  dialog.lightbox p{color:#fff; text-align:center; margin:.7rem 0 0; font-weight:600;}
+  dialog.lightbox .close{
+    position:fixed; top:1rem; right:1rem; background:#fff; color:var(--ink);
+    border:none; border-radius:99px; width:2.6rem; height:2.6rem; font-size:1.3rem; cursor:pointer;
+  }
+
   footer.site{border-top:1px solid var(--line); padding:2.2rem 0; background:var(--surface);}
   .foot-row{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;}
   .foot-row small{color:var(--ink-soft);}
@@ -295,6 +334,7 @@
     <nav class="primary links" id="navLinks">
       <a href="#sobre-mi">Sobre mí</a>
       <a href="#atencion">Atención</a>
+      <a href="#consultorio">Consultorio</a>
       <a href="#como-funciona">Cómo funciona</a>
       <a href="#agenda">Programa tu cita</a>
       <a href="#contacto">Contacto</a>
@@ -377,6 +417,30 @@
     </div>
   </section>
 
+  <section class="section tint" id="consultorio">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">El consultorio</p>
+        <h2>Un espacio tranquilo para hablar con calma.</h2>
+        <p style="color:var(--ink-soft);">Luz natural, un jardín interior y sillones cómodos para sesiones individuales, de pareja o en familia.</p>
+      </div>
+      <div class="gallery">
+        <figure class="photo main">
+          <button type="button" data-full="fotos/consultorio-escritorio.jpg" aria-label="Ampliar foto: Área de sesión con vista al jardín"><img src="fotos/consultorio-escritorio.jpg" width="1600" height="900" loading="lazy" alt="Consultorio con escritorio, sillones grises y ventanal hacia un jardín interior"></button>
+          <figcaption>Área de sesión con vista al jardín</figcaption>
+        </figure>
+        <figure class="photo">
+          <button type="button" data-full="fotos/consultorio-libreros.jpg" aria-label="Ampliar foto: Sillones y biblioteca"><img src="fotos/consultorio-libreros.jpg" width="1200" height="658" loading="lazy" alt="Sillones, diplomas en la pared y libreros de madera con libros de psicología"></button>
+          <figcaption>Sillones y biblioteca</figcaption>
+        </figure>
+        <figure class="photo">
+          <button type="button" data-full="fotos/consultorio-jardin.jpg" aria-label="Ampliar foto: Luz natural todo el día"><img src="fotos/consultorio-jardin.jpg" width="1200" height="750" loading="lazy" alt="Vista del consultorio desde el sillón, con el jardín interior al fondo"></button>
+          <figcaption>Luz natural todo el día</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
   <section class="section" id="como-funciona">
     <div class="wrap">
       <div class="section-head">
@@ -425,8 +489,24 @@
         <p style="font-size:.85rem; color:var(--ink-soft);">Los horarios exactos se actualizan según la agenda del consultorio.</p>
       </div>
     </div>
+    <div class="wrap arrive">
+        <figure class="photo">
+          <button type="button" data-full="fotos/edificio-802.jpg" aria-label="Ampliar foto: Unidad Médica Himalaya, número 802"><img src="fotos/edificio-802.jpg" width="1000" height="493" loading="lazy" alt="Fachada de la Unidad Médica Himalaya con el número 802 y el directorio de consultorios"></button>
+          <figcaption>Unidad Médica Himalaya, número 802</figcaption>
+        </figure>
+        <figure class="photo">
+          <button type="button" data-full="fotos/entrada.jpg" aria-label="Ampliar foto: Planta baja, a un lado de la entrada"><img src="fotos/entrada.jpg" width="1000" height="996" loading="lazy" alt="Ventana con el cartel de RAM Psicólogo junto a la entrada de cristal del edificio"></button>
+          <figcaption>Planta baja, a un lado de la entrada</figcaption>
+        </figure>
+    </div>
   </section>
 </main>
+
+<dialog class="lightbox" id="lightbox" aria-label="Foto ampliada">
+  <button type="button" class="close" id="lightboxClose" aria-label="Cerrar">✕</button>
+  <img id="lightboxImg" src="" alt="">
+  <p id="lightboxCap"></p>
+</dialog>
 
 <footer class="site">
   <div class="wrap foot-row">
@@ -439,6 +519,21 @@
 </footer>
 
 <script>
+  (function(){
+    var box=document.getElementById('lightbox');
+    if(!box || typeof box.showModal!=='function') return;
+    var img=document.getElementById('lightboxImg'), cap=document.getElementById('lightboxCap');
+    document.querySelectorAll('.photo button[data-full]').forEach(function(b){
+      b.addEventListener('click',function(){
+        var fig=b.closest('figure'), inner=b.querySelector('img');
+        img.src=b.getAttribute('data-full'); img.alt=inner.alt;
+        cap.textContent=fig.querySelector('figcaption').textContent;
+        box.showModal();
+      });
+    });
+    document.getElementById('lightboxClose').addEventListener('click',function(){box.close();});
+    box.addEventListener('click',function(e){ if(e.target===box) box.close(); });
+  })();
 (function(){
   "use strict";
 
