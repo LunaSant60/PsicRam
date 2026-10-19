@@ -2,7 +2,7 @@
 // (archivo «Formulario» del proyecto) y guarda las respuestas.
 //
 // La hoja de cálculo usa dos pestañas, que se crean solas si no existen:
-//   «Accesos»:    Nombre | Código | Usado | Enlace | Ilimitado | Abierto
+//   «Accesos»:    Nombre | Código | Usado | Enlace | Ilimitado | Abierto | Modificar
 //   «Respuestas»: se llena sola; la fila de encabezados se crea si está vacía.
 // Las fotos se guardan en la carpeta privada «Formulario - Fotos» de tu Drive y
 // en «Respuestas» queda el enlace a cada una.
@@ -13,7 +13,11 @@
 // (en Usado queda la fecha del último envío) hasta que borres el renglón o el «Sí».
 // Si el renglón dice «Sí» en la columna Abierto, ese enlace abre el formulario
 // con todos los campos opcionales (lo que se escriba se valida igual). Todo llega
-// a la misma pestaña «Respuestas». Su primera columna, «Consecutivo», numera cada
+// a la misma pestaña «Respuestas».
+// Si dice «Sí» en la columna Modificar, el enlace abre el módulo Modificaciones:
+// busca a una persona por nombre y deja corregir o completar su registro
+// (fotos incluidas). Ese enlace ve todos los registros, compártelo con cuidado.
+// Su primera columna, «Consecutivo», numera cada
 // registro (1, 2, 3...), y la segunda, «Registro», dice RC (Registro
 // Completo: trae todo lo que pide el formulario definitivo, fotos incluidas)
 // o RI (Registro Incompleto: le falta algo), sin importar por qué enlace llegó.
@@ -69,6 +73,7 @@ function generarEnlaces() {
   if (ultima < 2) return;
   // Las hojas de antes no tienen la columna Abierto.
   if (!hoja.getRange(1, 6).getValue()) hoja.getRange(1, 6).setValue("Abierto");
+  if (!hoja.getRange(1, 7).getValue()) hoja.getRange(1, 7).setValue("Modificar");
   var filas = hoja.getRange(2, 1, ultima - 1, 4).getValues();
   filas.forEach(function(fila) {
     if (fila[0] && !fila[1]) {
@@ -95,6 +100,7 @@ function doGet(e) {
   plantilla.codigo = plantilla.estado === "ok" ? codigo : "";
   plantilla.ilimitado = plantilla.estado === "ok" && acceso.ilimitado;
   plantilla.abierto = plantilla.estado === "ok" && acceso.abierto;
+  plantilla.modificar = plantilla.estado === "ok" && acceso.modificar;
   // ALLOWALL deja insertar el formulario en otra página (por ejemplo Google Sites),
   // donde ya no aparece el aviso de Google Apps Script.
   return plantilla.evaluate()
@@ -122,16 +128,7 @@ function enviarDatos(datos) {
     valores.push(valor ? "'" + valor : "");
   }
 
-  // Si escribió nombre y apellidos juntos en «Nombre(s)», se reparten.
-  var iNombres = indiceCampo_("nombres");
-  if (!valores[iNombres + 1] && !valores[iNombres + 2]) {
-    var partes = partirNombre_(valores[iNombres].slice(1));
-    if (partes) {
-      valores[iNombres] = "'" + partes.nombres;
-      valores[iNombres + 1] = "'" + partes.paterno;
-      valores[iNombres + 2] = "'" + partes.materno;
-    }
-  }
+  repartirNombre_(valores);
 
   // En el formulario abierto puede faltar cualquier campo, pero no todos.
   var algo = valores.some(String) || FOTOS.some(function(f) { return datos[f.nombre]; });
@@ -248,12 +245,13 @@ function buscarAcceso_(codigo) {
   var hoja = obtenerHojaAccesos_();
   var ultima = hoja.getLastRow();
   if (ultima < 2) return null;
-  var filas = hoja.getRange(2, 1, ultima - 1, 6).getValues();
+  var filas = hoja.getRange(2, 1, ultima - 1, 7).getValues();
   for (var i = 0; i < filas.length; i++) {
     if (String(filas[i][1]) === codigo) {
       var ilimitado = esSi_(filas[i][4]);
-      return { fila: i + 2, nombre: filas[i][0], usado: !!filas[i][2] && !ilimitado,
-        ilimitado: ilimitado, abierto: esSi_(filas[i][5]) };
+      var modificar = esSi_(filas[i][6]);
+      return { fila: i + 2, nombre: filas[i][0], usado: !!filas[i][2] && !ilimitado && !modificar,
+        ilimitado: ilimitado, abierto: esSi_(filas[i][5]), modificar: modificar };
     }
   }
   return null;
@@ -269,7 +267,7 @@ function obtenerHojaAccesos_() {
   var hoja = libro.getSheetByName(HOJA_ACCESOS);
   if (!hoja) {
     hoja = libro.insertSheet(HOJA_ACCESOS);
-    hoja.appendRow(["Nombre", "Código", "Usado", "Enlace", "Ilimitado", "Abierto"]);
+    hoja.appendRow(["Nombre", "Código", "Usado", "Enlace", "Ilimitado", "Abierto", "Modificar"]);
   }
   return hoja;
 }
@@ -277,7 +275,8 @@ function obtenerHojaAccesos_() {
 function encabezadosRespuestas_() {
   return ["Consecutivo", "Registro", "Fecha", "Invitado"]
     .concat(CAMPOS.map(function(c) { return c.titulo; }))
-    .concat(FOTOS.map(function(f) { return f.titulo; }));
+    .concat(FOTOS.map(function(f) { return f.titulo; }))
+    .concat(["Última modificación"]);
 }
 
 function obtenerHojaRespuestas_() {
@@ -425,6 +424,17 @@ function indiceCampo_(nombre) {
   return -1;
 }
 
+// Si escribió nombre y apellidos juntos en «Nombre(s)», se reparten.
+function repartirNombre_(valores) {
+  var iNombres = indiceCampo_("nombres");
+  if (valores[iNombres + 1] || valores[iNombres + 2]) return;
+  var partes = partirNombre_(String(valores[iNombres]).replace(/^'/, ""));
+  if (!partes) return;
+  valores[iNombres] = "'" + partes.nombres;
+  valores[iNombres + 1] = "'" + partes.paterno;
+  valores[iNombres + 2] = partes.materno ? "'" + partes.materno : "";
+}
+
 // Menú Accesos › Separar nombres y apellidos. En los renglones de «Respuestas»
 // sin apellidos, reparte el nombre completo escrito en «Nombre(s)». Antes deja
 // un respaldo de la pestaña.
@@ -494,4 +504,132 @@ function borrarPruebas() {
       }
     }
   });
+}
+
+// ---------- Modificaciones ----------
+// Solo para enlaces con «Sí» en la columna Modificar de «Accesos».
+
+function accesoModificar_(codigo) {
+  var acceso = buscarAcceso_(codigo);
+  return acceso && acceso.modificar ? acceso : null;
+}
+
+// Para comparar nombres sin importar acentos, mayúsculas ni signos.
+function normalizar_(texto) {
+  return sinAcentos_(String(texto || "")).replace(/[^a-z0-9ñ ]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// Busca por nombre completo o incompleto: cada palabra escrita debe aparecer
+// en el nombre, en cualquier orden («juan vargas» encuentra a Juan Ibarra Vargas).
+function buscarRegistros(codigo, texto) {
+  if (!accesoModificar_(codigo)) return { ok: false, error: "invalido" };
+  var palabras = normalizar_(texto).split(" ").filter(String);
+  if (!palabras.length || normalizar_(texto).length < 2) {
+    return { ok: false, message: "Escribe al menos 2 letras del nombre." };
+  }
+  var datos = obtenerHojaRespuestas_().getDataRange().getValues();
+  var enc = datos[0];
+  var col = function(t) { return enc.indexOf(t); };
+  var iNom = col("Nombre(s)"), iPat = col("Apellido paterno"), iMat = col("Apellido materno");
+  var resultados = [];
+  for (var r = 1; r < datos.length; r++) {
+    var fila = datos[r];
+    var nombre = [fila[iNom], fila[iPat], fila[iMat]].map(String).filter(String).join(" ");
+    var normal = normalizar_(nombre);
+    if (!normal || !palabras.every(function(p) { return normal.indexOf(p) >= 0; })) continue;
+    resultados.push({
+      consecutivo: fila[col("Consecutivo")],
+      nombre: nombre,
+      seccion: String(fila[col("Sección")]),
+      municipio: String(fila[col("Municipio")]),
+      registro: String(fila[col("Registro")])
+    });
+  }
+  return { ok: true, total: resultados.length, resultados: resultados.slice(0, 30) };
+}
+
+// Renglón (1, 2...) de «Respuestas» con ese consecutivo, o 0 si no está.
+function filaDeConsecutivo_(hoja, consecutivo) {
+  var n = Number(consecutivo);
+  var ultima = hoja.getLastRow();
+  if (!(n > 0) || ultima < 2) return 0;
+  var columna = hoja.getRange(2, 1, ultima - 1, 1).getValues();
+  for (var i = 0; i < columna.length; i++) if (Number(columna[i][0]) === n) return i + 2;
+  return 0;
+}
+
+function obtenerRegistro(codigo, consecutivo) {
+  if (!accesoModificar_(codigo)) return { ok: false, error: "invalido" };
+  var hoja = obtenerHojaRespuestas_();
+  var fila = filaDeConsecutivo_(hoja, consecutivo);
+  if (!fila) return { ok: false, message: "No se encontró ese registro. Búscalo otra vez." };
+  var enc = encabezadosRespuestas_();
+  var valores = hoja.getRange(fila, 1, 1, enc.length).getValues()[0];
+  var campos = {};
+  CAMPOS.forEach(function(c) { campos[c.nombre] = String(valores[enc.indexOf(c.titulo)]); });
+  var fotos = {};
+  FOTOS.forEach(function(f) { fotos[f.nombre] = String(valores[enc.indexOf(f.titulo)]) !== ""; });
+  return { ok: true, consecutivo: valores[0], registro: valores[1], campos: campos, fotos: fotos };
+}
+
+// Guarda los cambios de un registro. Un campo vacío queda vacío; una foto que
+// no se manda conserva la que ya tenía.
+function guardarModificacion(datos) {
+  datos = datos || {};
+  var previo = accesoModificar_(datos.codigo);
+  if (!previo) return { ok: false, error: "invalido" };
+
+  var valores = [];
+  for (var i = 0; i < CAMPOS.length; i++) {
+    var campo = CAMPOS[i];
+    var valor = String(datos[campo.nombre] || "").trim();
+    if (valor && !campo.patron.test(valor)) {
+      return { ok: false, error: "datos", message: "Revisa el campo «" + campo.titulo + "»." };
+    }
+    valores.push(valor ? "'" + valor : "");
+  }
+  if (!valores.some(String)) return { ok: false, error: "datos", message: "El registro no puede quedar vacío." };
+  repartirNombre_(valores);
+
+  var fotos = [];
+  for (var j = 0; j < FOTOS.length; j++) {
+    var enviada = datos[FOTOS[j].nombre];
+    var foto = enviada ? leerFoto_(enviada) : null;
+    if (enviada && !foto) return { ok: false, error: "datos", message: "Revisa la foto «" + FOTOS[j].titulo + "»." };
+    fotos.push(foto);
+  }
+  var archivos = guardarFotos_(fotos, previo.nombre + " (modificación)", datos);
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) {
+    tirarArchivos_(archivos);
+    return { ok: false, error: "ocupado" };
+  }
+  try {
+    var hoja = obtenerHojaRespuestas_();
+    var fila = filaDeConsecutivo_(hoja, datos.consecutivo);
+    if (!fila) {
+      tirarArchivos_(archivos);
+      return { ok: false, message: "No se encontró ese registro. Búscalo otra vez." };
+    }
+    var enc = encabezadosRespuestas_();
+    var rango = hoja.getRange(fila, 1, 1, enc.length);
+    var actual = rango.getValues()[0];
+    var nuevo = actual.map(function(v, k) {
+      // Igual que al guardar: el apóstrofo conserva ceros a la izquierda.
+      return k < 4 || v === "" || v instanceof Date ? v : "'" + v;
+    });
+    CAMPOS.forEach(function(c, k) { nuevo[enc.indexOf(c.titulo)] = valores[k]; });
+    FOTOS.forEach(function(f, k) {
+      if (archivos[k]) nuevo[enc.indexOf(f.titulo)] = archivos[k].getUrl();
+    });
+    nuevo[enc.indexOf("Registro")] = estaCompleto_(function(t) { return nuevo[enc.indexOf(t)]; }) ? "RC" : "RI";
+    nuevo[enc.indexOf("Última modificación")] = "'" +
+      Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm") + " - " + previo.nombre;
+    rango.setValues([nuevo]);
+    SpreadsheetApp.flush();
+    return { ok: true, consecutivo: actual[0], registro: nuevo[enc.indexOf("Registro")] };
+  } finally {
+    lock.releaseLock();
+  }
 }

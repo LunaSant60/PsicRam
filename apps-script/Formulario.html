@@ -132,6 +132,22 @@
       background: #f3e8de;
       color: var(--tinta);
     }
+    .search-row { display: flex; gap: .6rem; margin-top: .75rem; }
+    .search-row input { flex: 1; }
+    #busquedaEstado { margin: .75rem 0 0; color: var(--tinta-suave); }
+    #busquedaEstado:empty { display: none; }
+    .results { list-style: none; margin: .75rem 0 0; padding: 0; display: grid; gap: .5rem; }
+    .results button {
+      width: 100%;
+      text-align: left;
+      background: #fff;
+      color: var(--tinta);
+      border-color: var(--borde);
+      font-weight: 400;
+    }
+    .results button:hover { border-color: var(--guinda); background: #f3e6e2; }
+    .results b { color: var(--guinda); }
+    .results small { display: block; color: var(--tinta-suave); }
     @media (max-width: 560px) {
       body { padding: 1rem .65rem; }
       .grid { grid-template-columns: 1fr; }
@@ -148,6 +164,17 @@
     <div class="card-body">
     <p class="notice" id="accessStatus" role="status" aria-live="polite">Cargando...</p>
     <button type="button" id="otroRegistro" class="another" hidden>Llenar otro registro</button>
+
+    <section id="buscador" hidden>
+      <h2 class="section-title">Buscar persona</h2>
+      <p class="hint">Escribe el nombre de la persona, completo o solo una parte (por ejemplo «juan vargas»).</p>
+      <div class="search-row">
+        <input id="busqueda" type="search" autocomplete="off" placeholder="Nombre de la persona">
+        <button type="button" id="buscar" class="another" style="margin-top:0">Buscar</button>
+      </div>
+      <p id="busquedaEstado" role="status" aria-live="polite"></p>
+      <ul id="resultados" class="results"></ul>
+    </section>
 
     <form id="datosForm" hidden novalidate>
       <input type="hidden" name="codigo" id="codigo">
@@ -299,6 +326,9 @@
     var accessCode = <?!= JSON.stringify(codigo) ?>;
     var unlimited = <?!= JSON.stringify(!!ilimitado) ?>;
     var abierto = <?!= JSON.stringify(!!abierto) ?>;
+    var modificar = <?!= JSON.stringify(!!modificar) ?>;
+    // En el módulo Modificaciones: consecutivo del registro que se está editando.
+    var editando = null;
     var ACCESS_ERRORS = {
       falta: "Este formulario es privado. Ábrelo con el enlace personal que te enviaron.",
       invalido: "Este enlace no es válido. Pide un enlace nuevo a quien te envió el formulario.",
@@ -428,6 +458,7 @@
       new FormData(form).forEach(function(value, key) {
         if (typeof value === "string") datos[key] = value;
       });
+      if (modificar) datos.consecutivo = editando;
 
       formStatus.textContent = "Preparando fotos...";
       Promise.all(photoInputs.map(function(input) { return reducirFoto(input.files[0]); }))
@@ -445,7 +476,14 @@
     function enviarFormulario(datos, submitButton) {
       enviar(datos, 0, function(result) {
         submitButton.disabled = false;
-        if (result.ok) {
+        if (result.ok && modificar) {
+          form.hidden = true;
+          intro.hidden = true;
+          showAccessMessage("Listo: se guardaron los cambios del registro No. " + result.consecutivo +
+            " (" + (result.registro === "RC" ? "Registro Completo" : "Registro Incompleto") + ").");
+          anotherButton.textContent = "Modificar otro registro";
+          anotherButton.hidden = false;
+        } else if (result.ok) {
           form.hidden = true;
           intro.hidden = true;
           showAccessMessage("¡Gracias! Tus datos se enviaron correctamente.");
@@ -528,8 +566,7 @@
           if (result.error === "usado" && intento > 0) result = { ok: true };
           listo(result);
         })
-        .withFailureHandler(reintentar)
-        .enviarDatos(datos);
+        .withFailureHandler(reintentar)[modificar ? "guardarModificacion" : "enviarDatos"](datos);
     }
 
     // Con un enlace ilimitado se puede capturar a otra persona sin recargar.
@@ -538,6 +575,10 @@
       form.reset();
       anotherButton.hidden = true;
       accessStatus.hidden = true;
+      if (modificar) {
+        mostrarBuscador();
+        return;
+      }
       intro.hidden = false;
       form.hidden = false;
       document.querySelector("main").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -558,6 +599,10 @@
         return;
       }
       document.getElementById("codigo").value = accessCode;
+      if (modificar) {
+        prepararModificaciones();
+        return;
+      }
       if (abierto) abrirFormulario();
       accessStatus.hidden = true;
       intro.hidden = false;
@@ -575,6 +620,129 @@
           .replace("Las dos fotos son obligatorias. ", "");
         if (texto) p.textContent = texto; else p.remove();
       });
+    }
+
+    // ---------- Módulo Modificaciones ----------
+    var buscador = document.getElementById("buscador");
+    var busqueda = document.getElementById("busqueda");
+    var busquedaEstado = document.getElementById("busquedaEstado");
+    var resultados = document.getElementById("resultados");
+
+    function prepararModificaciones() {
+      abrirFormulario();
+      document.querySelector(".card-head h1").textContent = "Modificaciones";
+      submitButton.textContent = "Guardar cambios";
+      var cancelar = form.querySelector('button[type="reset"]');
+      cancelar.textContent = "Buscar otra persona";
+      cancelar.addEventListener("click", function() {
+        setTimeout(mostrarBuscador, 0);
+      });
+      accessStatus.hidden = true;
+      mostrarBuscador();
+    }
+
+    function mostrarBuscador() {
+      editando = null;
+      form.hidden = true;
+      intro.hidden = true;
+      buscador.hidden = false;
+      busqueda.focus({ preventScroll: true });
+      document.querySelector("main").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function buscarPersonas() {
+      var texto = busqueda.value.trim();
+      resultados.innerHTML = "";
+      busquedaEstado.textContent = "Buscando...";
+      google.script.run
+        .withSuccessHandler(function(r) {
+          r = r || {};
+          if (!r.ok) {
+            busquedaEstado.textContent = r.error === "invalido" ? ACCESS_ERRORS.invalido : (r.message || "No se pudo buscar.");
+            return;
+          }
+          if (!r.total) {
+            busquedaEstado.textContent = "No se encontró a nadie con ese nombre. Prueba con menos palabras o revisa cómo se escribe.";
+            return;
+          }
+          busquedaEstado.textContent = r.total === 1 ? "Se encontró 1 registro:" :
+            "Se encontraron " + r.total + " registros" + (r.total > r.resultados.length ?
+            " (se muestran los primeros " + r.resultados.length + "; escribe más del nombre para acotar)" : "") + ":";
+          r.resultados.forEach(function(p) {
+            var li = document.createElement("li");
+            var boton = document.createElement("button");
+            boton.type = "button";
+            var titulo = document.createElement("b");
+            titulo.textContent = "No. " + p.consecutivo + " · " + p.nombre;
+            var detalle = document.createElement("small");
+            detalle.textContent = [p.seccion ? "Sección " + p.seccion : "Sin sección", p.municipio, p.registro]
+              .filter(String).join(" · ");
+            boton.appendChild(titulo);
+            boton.appendChild(detalle);
+            boton.addEventListener("click", function() { abrirRegistro(p.consecutivo); });
+            li.appendChild(boton);
+            resultados.appendChild(li);
+          });
+        })
+        .withFailureHandler(function() {
+          busquedaEstado.textContent = "No se pudo buscar. Revisa tu conexión e inténtalo de nuevo.";
+        })
+        .buscarRegistros(accessCode, texto);
+    }
+
+    document.getElementById("buscar").addEventListener("click", buscarPersonas);
+    busqueda.addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        buscarPersonas();
+      }
+    });
+
+    function abrirRegistro(consecutivo) {
+      busquedaEstado.textContent = "Abriendo registro...";
+      google.script.run
+        .withSuccessHandler(function(r) {
+          r = r || {};
+          if (!r.ok) {
+            busquedaEstado.textContent = r.message || ACCESS_ERRORS.invalido;
+            return;
+          }
+          form.reset();
+          Object.keys(r.campos).forEach(function(nombre) {
+            var campo = form.elements[nombre];
+            if (!campo) return;
+            var valor = r.campos[nombre];
+            if (campo.tagName === "SELECT" && valor &&
+                !Array.prototype.some.call(campo.options, function(o) { return o.value === valor; })) {
+              var opcion = document.createElement("option");
+              opcion.textContent = valor;
+              campo.appendChild(opcion);
+            }
+            campo.value = valor;
+          });
+          photoInputs.forEach(function(input) {
+            var aviso = input.closest(".field").querySelector(".foto-actual");
+            if (!aviso) {
+              aviso = document.createElement("p");
+              aviso.className = "hint foto-actual";
+              input.closest(".field").appendChild(aviso);
+            }
+            aviso.textContent = r.fotos[input.name] ?
+              "✓ Ya tiene foto guardada. Sube otra solo si quieres reemplazarla." :
+              "No tiene foto. Puedes agregarla aquí.";
+          });
+          editando = r.consecutivo;
+          intro.textContent = "Registro No. " + r.consecutivo + " (" + r.registro + "). Agrega o corrige lo que haga falta y presiona «Guardar cambios».";
+          intro.hidden = false;
+          buscador.hidden = true;
+          busquedaEstado.textContent = "";
+          form.hidden = false;
+          document.querySelector("main").scrollIntoView({ behavior: "smooth", block: "start" });
+        })
+        .withFailureHandler(function() {
+          busquedaEstado.textContent = "No se pudo abrir el registro. Inténtalo de nuevo.";
+        })
+        .obtenerRegistro(accessCode, consecutivo);
     }
 
     form.addEventListener("reset", function() {
