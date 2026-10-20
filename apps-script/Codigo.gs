@@ -44,7 +44,7 @@ var CAMPOS = [
   { nombre: "seccion",   titulo: "Sección",                   patron: /^[0-9]{1,4}$/ },
   { nombre: "ocr",       titulo: "OCR",                       patron: /^[0-9]{13}$/ },
   { nombre: "telefono",  titulo: "Teléfono",                  patron: /^[0-9]{10}$/ },
-  { nombre: "correo",    titulo: "Correo electrónico",        patron: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ }
+  { nombre: "correo",    titulo: "Correo electrónico",        patron: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, opcional: true }
 ];
 
 // Fotos que pide el formulario; cada una llega ya reducida a JPEG desde el
