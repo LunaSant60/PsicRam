@@ -42,6 +42,7 @@ var CAMPOS = [
   { nombre: "municipio", titulo: "Municipio",                 patron: /^.{1,40}$/ },
   { nombre: "clave",     titulo: "Clave de elector",          patron: /^[A-Za-z0-9]{18}$/ },
   { nombre: "seccion",   titulo: "Sección",                   patron: /^[0-9]{1,4}$/ },
+  { nombre: "seccion2",  titulo: "Sección 2",                 patron: /^[0-9]{1,4}$/ },
   { nombre: "ocr",       titulo: "OCR",                       patron: /^[0-9]{13}$/ },
   { nombre: "telefono",  titulo: "Teléfono",                  patron: /^[0-9]{10}$/ },
   { nombre: "correo",    titulo: "Correo electrónico",        patron: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, opcional: true }
