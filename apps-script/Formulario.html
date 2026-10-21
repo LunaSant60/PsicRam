@@ -312,6 +312,13 @@
             pattern="[0-9]{1,4}" maxlength="4" required data-positive
             title="Escribe de 1 a 4 dígitos y un valor mayor que 0.">
         </div>
+        <div class="field full">
+          <label for="capturadoPor">Registro capturado por:</label>
+          <input id="capturadoPor" name="capturadoPor" type="text" autocomplete="off"
+            pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+" required
+            title="Escribe únicamente letras y espacios.">
+          <p class="hint">Nombre completo con apellidos de quien captura el registro.</p>
+        </div>
       </div>
       <div class="actions">
         <button type="submit">Enviar formulario</button>

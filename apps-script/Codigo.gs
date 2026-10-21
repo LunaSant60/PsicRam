@@ -46,7 +46,8 @@ var CAMPOS = [
   { nombre: "telefono",  titulo: "Teléfono",                  patron: /^[0-9]{10}$/ },
   { nombre: "correo",    titulo: "Correo electrónico",        patron: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, opcional: true },
   // Va al final del formulario y de la hoja, después de las fotos.
-  { nombre: "seccionTrabajo", titulo: "Sección de trabajo",   patron: /^[0-9]{1,4}$/, alFinal: true }
+  { nombre: "seccionTrabajo", titulo: "Sección de trabajo",   patron: /^[0-9]{1,4}$/, alFinal: true },
+  { nombre: "capturadoPor", titulo: "Registro capturado por",  patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/, alFinal: true }
 ];
 
 // Fotos que pide el formulario; cada una llega ya reducida a JPEG desde el
