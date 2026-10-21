@@ -42,10 +42,11 @@ var CAMPOS = [
   { nombre: "municipio", titulo: "Municipio",                 patron: /^.{1,40}$/ },
   { nombre: "clave",     titulo: "Clave de elector",          patron: /^[A-Za-z0-9]{18}$/ },
   { nombre: "seccion",   titulo: "Sección",                   patron: /^[0-9]{1,4}$/ },
-  { nombre: "seccion2",  titulo: "Sección 2",                 patron: /^[0-9]{1,4}$/ },
   { nombre: "ocr",       titulo: "OCR",                       patron: /^[0-9]{13}$/ },
   { nombre: "telefono",  titulo: "Teléfono",                  patron: /^[0-9]{10}$/ },
-  { nombre: "correo",    titulo: "Correo electrónico",        patron: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, opcional: true }
+  { nombre: "correo",    titulo: "Correo electrónico",        patron: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, opcional: true },
+  // Va al final del formulario y de la hoja, después de las fotos.
+  { nombre: "seccionTrabajo", titulo: "Sección de trabajo",   patron: /^[0-9]{1,4}$/, alFinal: true }
 ];
 
 // Fotos que pide el formulario; cada una llega ya reducida a JPEG desde el
@@ -173,7 +174,16 @@ function enviarDatos(datos) {
     }) ? "RC" : "RI";
     var hoja = obtenerHojaRespuestas_();
     var numero = siguienteNumero_(hoja);
-    hoja.appendRow([numero, registro, new Date(), acceso.nombre].concat(valores, enlaces));
+    // Cada dato en la columna de su título (no todos los campos van seguidos).
+    var enc = encabezadosRespuestas_();
+    var renglon = enc.map(function() { return ""; });
+    renglon[0] = numero;
+    renglon[1] = registro;
+    renglon[2] = new Date();
+    renglon[3] = acceso.nombre;
+    CAMPOS.forEach(function(c, k) { renglon[enc.indexOf(c.titulo)] = valores[k]; });
+    FOTOS.forEach(function(f, k) { renglon[enc.indexOf(f.titulo)] = enlaces[k]; });
+    hoja.appendRow(renglon);
     // Que el consecutivo se vea como número aunque la columna traiga formato de fecha.
     hoja.getRange(hoja.getLastRow(), 1).setNumberFormat("0");
     obtenerHojaAccesos_().getRange(acceso.fila, 3).setValue(new Date());
@@ -274,9 +284,11 @@ function obtenerHojaAccesos_() {
 }
 
 function encabezadosRespuestas_() {
+  var titulo = function(x) { return x.titulo; };
   return ["Consecutivo", "Registro", "Fecha", "Invitado"]
-    .concat(CAMPOS.map(function(c) { return c.titulo; }))
-    .concat(FOTOS.map(function(f) { return f.titulo; }))
+    .concat(CAMPOS.filter(function(c) { return !c.alFinal; }).map(titulo))
+    .concat(FOTOS.map(titulo))
+    .concat(CAMPOS.filter(function(c) { return c.alFinal; }).map(titulo))
     .concat(["Última modificación"]);
 }
 
@@ -332,7 +344,7 @@ function acomodarRespuestas() {
 }
 
 // Nombres viejos de columnas que hoy se llaman distinto.
-var ALIAS_COLUMNAS = { "Nombre completo": "Nombre(s)", "No.": "Consecutivo" };
+var ALIAS_COLUMNAS = { "Nombre completo": "Nombre(s)", "No.": "Consecutivo", "Sección 2": "Sección de trabajo" };
 
 // Reescribe la pestaña con los encabezados actuales y cada dato en su columna.
 // Un renglón con datos más allá de los encabezados viejos se escribió con los
