@@ -107,7 +107,7 @@ function doGet(e) {
   // ALLOWALL deja insertar el formulario en otra página (por ejemplo Google Sites),
   // donde ya no aparece el aviso de Google Apps Script.
   return plantilla.evaluate()
-    .setTitle("Formulario de datos")
+    .setTitle("Plataforma de Captura")
     .addMetaTag("viewport", "width=device-width, initial-scale=1")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
