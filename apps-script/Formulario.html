@@ -305,8 +305,8 @@
           <button type="button" class="change-photo" id="foto2Cambiar" hidden>Cambiar foto</button>
         </div>
         <p class="hint field full">Las dos fotos son obligatorias. Puedes tomarlas con la cámara o elegirlas de tu galería.</p>
-        <h2 class="section-title">Sección de trabajo</h2>
-        <div class="field">
+        <h2 class="section-title" data-solo-rc>Sección de trabajo</h2>
+        <div class="field" data-solo-rc>
           <label for="seccionTrabajo">Sección de trabajo</label>
           <input id="seccionTrabajo" name="seccionTrabajo" type="text" inputmode="numeric"
             pattern="[0-9]{1,4}" maxlength="4" required data-positive
@@ -626,7 +626,26 @@
 
     // Formulario abierto: ningún campo es obligatorio, pero lo que se escriba
     // se sigue revisando con las mismas reglas.
+    // Sección de trabajo solo se ve (y en el definitivo se pide) cuando el tipo es RC.
+    var tipoCampo = document.getElementById("tipo");
+    var seccionTrabajo = document.getElementById("seccionTrabajo");
+    var camposOpcionales = false;
+    function mostrarSeccionTrabajo() {
+      var esRC = tipoCampo.value === "RC";
+      form.querySelectorAll("[data-solo-rc]").forEach(function(el) { el.hidden = !esRC; });
+      seccionTrabajo.required = esRC && !camposOpcionales;
+      if (!esRC) {
+        seccionTrabajo.value = "";
+        seccionTrabajo.classList.remove("invalid");
+        var caja = seccionTrabajo.closest(".field").querySelector(".error-msg");
+        if (caja) caja.hidden = true;
+      }
+    }
+    tipoCampo.addEventListener("change", mostrarSeccionTrabajo);
+    mostrarSeccionTrabajo();
+
     function abrirFormulario() {
+      camposOpcionales = true;
       intro.textContent = "Todos los campos son opcionales: llena los que tengas y presiona «Enviar formulario».";
       form.querySelectorAll("[required]").forEach(function(c) { c.removeAttribute("required"); });
       form.querySelectorAll("option[disabled]").forEach(function(o) { o.disabled = false; });
@@ -735,6 +754,7 @@
             }
             campo.value = valor;
           });
+          mostrarSeccionTrabajo();
           photoInputs.forEach(function(input) {
             var aviso = input.closest(".field").querySelector(".foto-actual");
             if (!aviso) {
@@ -762,6 +782,7 @@
 
     form.addEventListener("reset", function() {
       formStatus.textContent = "";
+      setTimeout(mostrarSeccionTrabajo, 0);
       // El navegador vacía los archivos justo después de este evento.
       setTimeout(function() { photoInputs.forEach(mostrarFoto); }, 0);
       campos.forEach(function(campo) {

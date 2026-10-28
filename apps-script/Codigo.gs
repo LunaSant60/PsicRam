@@ -46,7 +46,9 @@ var CAMPOS = [
   { nombre: "telefono",  titulo: "Teléfono",                  patron: /^[0-9]{10}$/ },
   { nombre: "correo",    titulo: "Correo electrónico",        patron: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, opcional: true },
   // Va al final del formulario y de la hoja, después de las fotos.
-  { nombre: "seccionTrabajo", titulo: "Sección de trabajo",   patron: /^[0-9]{1,4}$/, alFinal: true },
+  // Solo se pide a los RC; con RG se guarda vacía.
+  { nombre: "seccionTrabajo", titulo: "Sección de trabajo",   patron: /^[0-9]{1,4}$/, alFinal: true,
+    soloSi: { campo: "tipo", valor: "RC" } },
   { nombre: "capturadoPor", titulo: "Registro capturado por",  patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/, alFinal: true }
 ];
 
@@ -123,8 +125,8 @@ function enviarDatos(datos) {
   var valores = [];
   for (var i = 0; i < CAMPOS.length; i++) {
     var campo = CAMPOS[i];
-    var valor = String(datos[campo.nombre] || "").trim();
-    if ((!valor && !campo.opcional && !previo.abierto) || (valor && !campo.patron.test(valor))) {
+    var valor = aplica_(campo, datos) ? String(datos[campo.nombre] || "").trim() : "";
+    if ((!valor && !campo.opcional && !previo.abierto && aplica_(campo, datos)) || (valor && !campo.patron.test(valor))) {
       return { ok: false, error: "datos", message: "Revisa el campo «" + campo.titulo + "»." };
     }
     // El apóstrofo evita que Sheets quite ceros a la izquierda (OCR, CP, etc.).
@@ -310,10 +312,18 @@ function obtenerHojaRespuestas_() {
   return hoja;
 }
 
+// Un campo con «soloSi» solo aplica cuando otro campo tiene cierto valor
+// (Sección de trabajo, solo para RC).
+function aplica_(campo, datos) {
+  return !campo.soloSi || String(datos[campo.soloSi.campo] || "").replace(/^'/, "").trim() === campo.soloSi.valor;
+}
+
 // true si el registro trae todo lo que pide el formulario definitivo: los
 // campos obligatorios y las fotos obligatorias. «valor» da lo guardado por título.
 function estaCompleto_(valor) {
-  var titulos = CAMPOS.filter(function(c) { return !c.opcional; })
+  var datos = {};
+  CAMPOS.forEach(function(c) { datos[c.nombre] = String(valor(c.titulo) || "").replace(/^'/, ""); });
+  var titulos = CAMPOS.filter(function(c) { return !c.opcional && aplica_(c, datos); })
     .concat(FOTOS.filter(function(f) { return f.obligatoria; }))
     .map(function(x) { return x.titulo; });
   return titulos.every(function(t) { return String(valor(t) || "").replace(/^'/, "").trim() !== ""; });
@@ -596,7 +606,7 @@ function guardarModificacion(datos) {
   var valores = [];
   for (var i = 0; i < CAMPOS.length; i++) {
     var campo = CAMPOS[i];
-    var valor = String(datos[campo.nombre] || "").trim();
+    var valor = aplica_(campo, datos) ? String(datos[campo.nombre] || "").trim() : "";
     if (valor && !campo.patron.test(valor)) {
       return { ok: false, error: "datos", message: "Revisa el campo «" + campo.titulo + "»." };
     }
