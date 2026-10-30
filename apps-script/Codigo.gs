@@ -198,16 +198,36 @@ function enviarDatos(datos) {
 }
 
 // Devuelve los bytes de la foto si es un JPEG válido y no demasiado grande.
+// Casi siempre llega un JPEG ya reducido por el navegador. Si el navegador no
+// pudo abrir la foto (por ejemplo HEIC de iPhone en Android o en la compu),
+// llega el archivo original y se guarda tal cual si es PNG, WEBP o HEIC.
 function leerFoto_(base64) {
   if (typeof base64 !== "string" || !base64 || base64.length > MAX_FOTO_BYTES * 4 / 3) return null;
   try {
     var bytes = Utilities.base64Decode(base64);
-    // Todo JPEG empieza con FF D8 FF.
-    if (bytes.length < 3 || bytes[0] !== -1 || bytes[1] !== -40 || bytes[2] !== -1) return null;
-    return bytes;
+    var tipo = tipoDeImagen_(bytes);
+    return tipo ? { bytes: bytes, mime: tipo.mime, ext: tipo.ext } : null;
   } catch (err) {
     return null;
   }
+}
+
+// Reconoce el formato por sus primeros bytes, no por el nombre del archivo.
+function tipoDeImagen_(b) {
+  var u = function(i) { return b[i] & 0xff; };
+  var texto = function(desde, n) {
+    var s = "";
+    for (var i = desde; i < desde + n && i < b.length; i++) s += String.fromCharCode(u(i));
+    return s;
+  };
+  if (b.length < 12) return null;
+  if (u(0) === 0xff && u(1) === 0xd8 && u(2) === 0xff) return { mime: "image/jpeg", ext: "jpg" };
+  if (u(0) === 0x89 && texto(1, 3) === "PNG") return { mime: "image/png", ext: "png" };
+  if (texto(0, 4) === "RIFF" && texto(8, 4) === "WEBP") return { mime: "image/webp", ext: "webp" };
+  if (texto(4, 4) === "ftyp" && /^(heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(texto(8, 4))) {
+    return { mime: "image/heic", ext: "heic" };
+  }
+  return null;
 }
 
 function guardarFotos_(fotos, invitado, datos) {
@@ -217,9 +237,9 @@ function guardarFotos_(fotos, invitado, datos) {
     .filter(String).join(" ");
   var base = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH.mm.ss") +
     " - " + invitado + " - " + nombre;
-  return fotos.map(function(bytes, i) {
-    if (!bytes) return null;
-    return carpeta.createFile(Utilities.newBlob(bytes, "image/jpeg", base + " - " + FOTOS[i].titulo + ".jpg"));
+  return fotos.map(function(foto, i) {
+    if (!foto) return null;
+    return carpeta.createFile(Utilities.newBlob(foto.bytes, foto.mime, base + " - " + FOTOS[i].titulo + "." + foto.ext));
   });
 }
 
