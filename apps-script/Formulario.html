@@ -217,9 +217,9 @@
         </div>
         <div class="field">
           <label for="numero">Número</label>
-          <input id="numero" name="numero" type="text" inputmode="numeric"
-            pattern="[0-9]+" required data-positive
-            title="Escribe un número entero mayor que 0.">
+          <input id="numero" name="numero" type="text" autocomplete="off"
+            pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,#\/\-]*[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9][A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,#\/\-]*" required data-positive
+            title="Usa letras y números (por ejemplo 12, 12A o S/N). También se permiten espacios y . , # / -">
         </div>
         <div class="field">
           <label for="interior">Número interior</label>

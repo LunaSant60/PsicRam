@@ -35,7 +35,8 @@ var CAMPOS = [
   { nombre: "paterno",   titulo: "Apellido paterno",          patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]*$/, opcional: true },
   { nombre: "materno",   titulo: "Apellido materno",          patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]*$/, opcional: true },
   { nombre: "calle",     titulo: "Calle",                     patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,#\-]+$/ },
-  { nombre: "numero",    titulo: "Número",                    patron: /^[0-9]+$/ },
+  // Letras y números (12, 12A, S/N...); debe traer al menos una letra o número.
+  { nombre: "numero",    titulo: "Número",                    patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,#\/\-]*[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9][A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,#\/\-]*$/ },
   { nombre: "interior",  titulo: "Número interior",           patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,#\-]*$/, opcional: true },
   { nombre: "colonia",   titulo: "Colonia o Fraccionamiento", patron: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,#\-]+$/ },
   { nombre: "postal",    titulo: "Código postal",             patron: /^[0-9]{1,5}$/ },
