@@ -61,6 +61,8 @@ var FOTOS = [
 ];
 var CARPETA_FOTOS = "Formulario - Fotos";
 var MAX_FOTO_BYTES = 5 * 1024 * 1024;
+// Fechas como día/mes/año y hora: 05/11/2026 14:30.
+var FORMATO_FECHA = "dd/mm/yyyy hh:mm";
 
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -188,9 +190,10 @@ function enviarDatos(datos) {
     CAMPOS.forEach(function(c, k) { renglon[enc.indexOf(c.titulo)] = valores[k]; });
     FOTOS.forEach(function(f, k) { renglon[enc.indexOf(f.titulo)] = enlaces[k]; });
     hoja.appendRow(renglon);
-    // Que el consecutivo se vea como número aunque la columna traiga formato de fecha.
-    hoja.getRange(hoja.getLastRow(), 1).setNumberFormat("0");
-    obtenerHojaAccesos_().getRange(acceso.fila, 3).setValue(new Date());
+    // Consecutivo como número y Fecha como día/mes/año, sin depender del formato
+    // que traiga la columna ni de la configuración regional de la hoja.
+    hoja.getRange(hoja.getLastRow(), 1, 1, 3).setNumberFormats([["0", "@", FORMATO_FECHA]]);
+    obtenerHojaAccesos_().getRange(acceso.fila, 3).setValue(new Date()).setNumberFormat(FORMATO_FECHA);
     SpreadsheetApp.flush();
     return { ok: true };
   } finally {
@@ -366,7 +369,7 @@ function darFormatoRespuestas_(hoja) {
   hoja.getRange("A:A").setNumberFormat("0");
   hoja.setColumnWidth(2, 80);
   hoja.setColumnWidth(3, 170);
-  hoja.getRange("C:C").setNumberFormat("dd/mm/yyyy hh:mm");
+  hoja.getRange("C:C").setNumberFormat(FORMATO_FECHA);
 }
 
 // Menú Accesos › Acomodar columnas de Respuestas.
